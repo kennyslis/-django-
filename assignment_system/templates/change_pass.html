@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
+
+<div class="section">
+    <h4>修改密码</h4>
+    <form id="change-password-form" class="styled-form">
+        {% csrf_token %}
+        
+        <label for="student">选择学生:</label>
+        <select name="student" id="student">
+            <option value="all">所有学生</option>
+            {% for student in students %}
+                <option value="{{ student.id }}">{{ student.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="new_password">输入新密码:</label>
+        <input type="password" name="new_password" id="new_password" required>
+
+        <button type="submit" class="button">修改密码</button>
+    </form>
+
+    <p id="password-message" style="color: green; display: none;"></p>
+</div>
+
+{% if message %}
+    <div id="success-message" class="success-message">
+        {{ message }}
+    </div>
+    <script>
+        setTimeout(function() {
+            document.getElementById('success-message').style.opacity = '0';
+            setTimeout(function() {
+                document.getElementById('success-message').style.display = 'none';
+            }, 500);  // 0.5秒后完全隐藏
+        }, 3000);  // 3秒后开始淡出
+    </script>
+{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $("#change-password-form").submit(function (event) {
+            event.preventDefault();  // 阻止默认表单提交
+
+            let formData = $(this).serialize();  // 获取表单数据
+            let csrfToken = $("input[name=csrfmiddlewaretoken]").val();  // 获取 CSRF Token
+
+            $.ajax({
+                url: "{% url 'change_password' %}",  
+                type: "POST",
+                data: formData,
+                headers: { "X-CSRFToken": csrfToken },  
+                success: function (response) {
+                    if (response.status === "success") {
+                        $("#password-message").css("color", "green").text(response.message).show();
+                    } else {
+                        $("#password-message").css("color", "red").text(response.message).show();
+                    }
+                },
+                error: function () {
+                    $("#password-message").css("color", "red").text("请求失败，请稍后再试。").show();
+                }
+            });
+        });
+    });
+</script>
+<style>
+/* 全局样式 */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 20px;
+    padding: 20px;
+}
+
+/* 标题样式 */
+.title {
+    color: #333;
+    text-align: center;
+}
+
+/* 区块样式 */
+.section {
+    background: white;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 表格样式 */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.styled-table th, .styled-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+.styled-table th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.styled-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.styled-table tr:hover {
+    background-color: #ddd;
+}
+
+/* 链接样式 */
+.action-link {
+    color: #007BFF;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.action-link:hover {
+    text-decoration: underline;
+}
+
+.edit-link {
+    color: #28a745;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.delete-link {
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* 表单样式 */
+.styled-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.styled-form label {
+    font-weight: bold;
+}
+
+.styled-form select, .styled-form input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.styled-form button {
+    padding: 8px 15px;
+    border: none;
+    background: #007BFF;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.styled-form button:hover {
+    background: #0056b3;
+}
+
+/* 按钮样式 */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    margin-top: 10px;
+    transition: background 0.3s;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+/* 成功消息样式 */
+.success-message {
+    padding: 10px;
+    margin: 20px 0;
+    background: #d4edda;
+    color: #155724;
+    border-left: 5px solid #28a745;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+/* 未提交状态 */
+.not-submitted {
+    color: red;
+    font-weight: bold;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="title">作业提交情况</h2>
+
+<table class="styled-table">
+    <thead>
+        <tr>
+            <th>学生姓名</th>
+            <th>提交时间</th>
+            <th>作业文件</th>
+            <th>评论</th>
+            <th>成绩</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.name }}</td>
+            {% with submission=submissions|dictsort:"student" %}
+            <td>
+                {% if student.has_submission %}
+                    {% for submission in submissions %}
+                        {% if submission.student == student %}
+                        {{ submission.submission_date|date:"Y-m-d H:i" }}
+
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <span class="status-not-submitted">未提交作业</span>
+                {% endif %}
+            </td>
+            
+            <td>
+                {% for submission in submissions %}
+                    {% if submission.student == student %}
+                    <a href="{% url 'view_ipynb' submission.id %}" target="_blank" class="action-link">
+                        查看作业
+                    </a>
+                    
+                    {% endif %}
+                    {% empty %}
+                        <span class="status-not-submitted">未提交作业</span>
+                    {% endfor %}
+            </td>
+            <td>
+                {% for submission in submissions %}
+                    {% if submission.student == student %}
+                        {{ submission.comments|default:"无" }}
+                    {% endif %}
+                {% empty %}
+                    <span class="status-none">无评论</span>
+                {% endfor %}
+            </td>
+            <td>
+                {% if student.score %}
+                    {{ student.score }}
+                {% else %}
+                    <span class="status-not-graded">未评分</span>
+                {% endif %}
+            </td>
+            <td>
+                {% for submission in submissions %}
+                    {% if submission.student == student %}
+                        <a href="{% url 'grade_submission' assignment.id submission.student.id %}" class="button">评分</a>
+                    {% endif %}
+                {% endfor %}
+            </td>
+            {% endwith %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="status-empty">暂无学生记录</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<style>
+/* 全局样式 */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 20px;
+    padding: 20px;
+}
+
+/* 标题样式 */
+.title {
+    color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* 表格样式 */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.styled-table th, .styled-table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+.styled-table th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.styled-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.styled-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* 状态样式 */
+.status-not-submitted {
+    color: red;
+    font-weight: bold;
+}
+
+.status-not-graded {
+    color: orange;
+    font-weight: bold;
+}
+
+.status-none {
+    color: #888;
+}
+
+.status-empty {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    color: #555;
+}
+
+/* 链接样式 */
+.action-link {
+    color: #007BFF;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.action-link:hover {
+    text-decoration: underline;
+}
+
+/* 按钮样式 */
+.button {
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: #007BFF;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+</style>
+
+{% endblock %}

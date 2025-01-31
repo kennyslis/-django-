@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="title">✏️ 编辑作业</h2>
+    <h3 class="subtitle">📌 作业：{{ assignment.title }}</h3>
+
+    <form method="post" class="edit-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit" class="submit-btn">✅ 保存更改</button>
+    </form>
+
+    <a href="{% url 'teacher_assignment_management' %}" class="back-link">🔙 返回作业管理</a>
+</div>
+
+<style>
+    /* 容器样式 */
+    .container {
+        max-width: 500px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 22px;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .subtitle {
+        font-size: 18px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    /* 表单样式 */
+    .edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .edit-form input,
+    .edit-form textarea,
+    .edit-form select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    /* 提交按钮 */
+    .submit-btn {
+        background-color: #007BFF;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 5px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #0056b3;
+    }
+
+    /* 返回链接 */
+    .back-link {
+        display: inline-block;
+        margin-top: 15px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #007BFF;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+
+{% endblock %}

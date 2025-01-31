@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
+<div class="section">
+    <h3>导出成绩</h3>
+    <form method="get" action="{% url 'export_scores' %}" class="styled-form">
+        <label for="assignment">选择作业:</label>
+        <select name="assignment" id="assignment">
+            <option value="all">所有作业</option>
+            {% for assignment in assignments %}
+            <option value="{{ assignment.id }}">{{ assignment.title }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="button">导出成绩</button>
+    </form>
+</div>
+
+
+
+<style>
+/* 全局样式 */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 20px;
+    padding: 20px;
+}
+
+/* 标题样式 */
+.title {
+    color: #333;
+    text-align: center;
+}
+
+/* 区块样式 */
+.section {
+    background: white;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 表格样式 */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.styled-table th, .styled-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+.styled-table th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.styled-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.styled-table tr:hover {
+    background-color: #ddd;
+}
+
+/* 链接样式 */
+.action-link {
+    color: #007BFF;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.action-link:hover {
+    text-decoration: underline;
+}
+
+.edit-link {
+    color: #28a745;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.delete-link {
+    color: #dc3545;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* 表单样式 */
+.styled-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.styled-form label {
+    font-weight: bold;
+}
+
+.styled-form select, .styled-form input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.styled-form button {
+    padding: 8px 15px;
+    border: none;
+    background: #007BFF;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.styled-form button:hover {
+    background: #0056b3;
+}
+
+/* 按钮样式 */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    margin-top: 10px;
+    transition: background 0.3s;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+/* 成功消息样式 */
+.success-message {
+    padding: 10px;
+    margin: 20px 0;
+    background: #d4edda;
+    color: #155724;
+    border-left: 5px solid #28a745;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+/* 未提交状态 */
+.not-submitted {
+    color: red;
+    font-weight: bold;
+}
+</style>
+
+{% endblock %}

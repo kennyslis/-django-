@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="title">📌 评分 - {{ submission.student.name }} - {{ submission.assignment.title }}</h2>
+
+    <form method="POST" class="grading-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit" class="submit-btn">✅ 保存评分</button>
+    </form>
+
+    <a href="{% url 'view_submissions' submission.assignment.id %}" class="back-link">🔙 返回作业提交记录</a>
+</div>
+
+<style>
+    /* 外层容器 */
+    .container {
+        max-width: 500px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 22px;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    /* 评分表单 */
+    .grading-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* 输入框样式 */
+    .grading-form input, 
+    .grading-form textarea, 
+    .grading-form select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    /* 提交按钮 */
+    .submit-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 5px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    /* 悬停效果 */
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+
+    /* 返回链接 */
+    .back-link {
+        display: inline-block;
+        margin-top: 15px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #007BFF;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="title">📄 {{ assignment.title }}</h2>
+
+    <form method="post" enctype="multipart/form-data" class="assignment-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit" class="submit-btn">📤 提交作业</button>
+    </form>
+</div>
+
+<style>
+    /* 外层容器 */
+    .container {
+        max-width: 500px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    /* 表单样式 */
+    .assignment-form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* 表单输入框 */
+    .assignment-form input, 
+    .assignment-form textarea,
+    .assignment-form select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    /* 提交按钮 */
+    .submit-btn {
+        background-color: #007BFF;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 5px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    /* 悬停效果 */
+    .submit-btn:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+{% endblock %}

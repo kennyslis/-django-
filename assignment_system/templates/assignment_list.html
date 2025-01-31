@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="title">📌 作业列表</h2>
+    <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
+
+    <ul class="assignment-list">
+        {% for assignment in assignments %}
+            <li class="assignment-item">
+                <a href="{% url 'student_submission' assignment.id %}" class="assignment-link">
+                    📖 {{ assignment.title }}
+                </a>
+                <span class="due-date">⏳ 截止时间: {{ assignment.due_date|date:"Y-m-d H:i" }}</span>
+            </li>
+        {% empty %}
+            <li class="no-assignment">暂无作业</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<style>
+    /* 全局样式 */
+    .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .welcome {
+        font-size: 18px;
+        color: #666;
+    }
+
+    /* 作业列表 */
+    .assignment-list {
+        list-style-type: none;
+        padding: 0;
+        margin-top: 20px;
+    }
+
+    .assignment-item {
+        background: #f9f9f9;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        transition: background-color 0.3s ease, transform 0.2s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* 交错背景色 */
+    .assignment-item:nth-child(even) {
+        background: #e6f7ff;
+    }
+
+    /* 悬停效果 */
+    .assignment-item:hover {
+        background: #cce7ff;
+        transform: translateY(-2px);
+    }
+
+    /* 链接美化 */
+    .assignment-link {
+        font-size: 18px;
+        font-weight: bold;
+        color: #007BFF;
+        text-decoration: none;
+    }
+
+    .assignment-link:hover {
+        text-decoration: underline;
+        color: #0056b3;
+    }
+
+    /* 截止时间 */
+    .due-date {
+        font-size: 14px;
+        color: #555;
+    }
+
+    /* 没有作业时的提示 */
+    .no-assignment {
+        padding: 15px;
+        color: #999;
+        font-style: italic;
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>用户登录</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* 登录框 */
+        .login-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 320px;
+        }
+
+        /* 标题 */
+        .login-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* 输入框 */
+        .login-container input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        /* 登录按钮 */
+        .login-container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-container button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 注册提示 */
+        .register-link {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .register-link a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>🔑 用户登录</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="username" id="username" placeholder="用户名" required>
+            <input type="password" name="password" id="password" placeholder="密码" required>
+            <button type="submit">登录</button>
+        </form>
+        <p class="register-link">没有账户? <a href="{% url 'register' %}">注册</a></p>
+    </div>
+</body>
+</html>

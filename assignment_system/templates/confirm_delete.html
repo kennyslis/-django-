@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="title">⚠️ 确认删除</h2>
+    <p class="warning-text">您确定要删除作业 <strong>"{{ assignment.title }}"</strong> 吗？</p>
+
+    <form method="post" class="delete-form">
+        {% csrf_token %}
+        <button type="submit" class="delete-btn">🗑 确认删除</button>
+        <a href="{% url 'teacher_assignment_management' %}" class="cancel-btn">❌ 取消</a>
+    </form>
+</div>
+
+<style>
+    /* 页面整体布局 */
+    .container {
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 24px;
+        color: #d9534f; /* 红色警告 */
+        margin-bottom: 15px;
+    }
+
+    /* 提示文字 */
+    .warning-text {
+        font-size: 18px;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    /* 按钮样式 */
+    .delete-form {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .delete-btn {
+        background: #d9534f;
+        color: white;
+        font-size: 16px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .delete-btn:hover {
+        background: #c9302c;
+    }
+
+    .cancel-btn {
+        background: #6c757d;
+        color: white;
+        font-size: 16px;
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        display: inline-block;
+        transition: background 0.3s;
+    }
+
+    .cancel-btn:hover {
+        background: #5a6268;
+    }
+</style>
+
+{% endblock %}

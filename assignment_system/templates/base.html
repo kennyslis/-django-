@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作业管理系统</title>
+    <style>
+       body {
+    height: 888px;
+    display: flex;
+    flex-direction: row; /* 水平方向布局 */
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #007bff;
+    color: white;
+    padding: 15px 30px;
+    text-align: center;
+    flex: 0 0 200px; /* 固定宽度 200px */
+}
+
+nav {
+    display: block;
+    margin-top: 20px; /* 使导航栏略有下移 */
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+}
+
+nav ul li {
+    margin: 15px 0;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+    color: #ffd700;
+}
+
+main {
+    flex-grow: 1; /* 主体部分占据剩余空间 */
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-left: 20px; /* 主体部分与左侧导航的间隙 */
+}
+
+
+    </style>
+</head>
+<body>
+    <header>
+        {% if user.is_teacher %}
+        <h1>作业管理系统</h1>
+        {% else %}
+        <h1>作业提交系统</h1>
+        {% endif %}
+        <nav>
+            <ul>
+                {% if not user.is_teacher %}
+                    <li><a href="{% url 'assignment_list' %}">作业列表</a></li>
+                    <li><a href="{% url 'check_grade' %}">查看作业成绩</a></li>
+                    <li><a href="{% url 'custom_login' %}">退出</a></li>
+                {% endif %}
+                {% if user.is_teacher %}
+                    <li><a href="{% url 'teacher_assignment_management' %}">作业管理</a></li>
+                    <li><a href="{% url 'grade_port' %}">导出成绩</a></li>
+                    <li><a href="{% url 'change_pass_html' %}">修改学生密码</a></li>
+                    <li><a href="{% url 'custom_login' %}">退出</a></li>
+
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>
