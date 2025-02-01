@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
+from django.core.exceptions import ValidationError
 class CustomUser(AbstractUser):
     number = models.IntegerField(unique=True, verbose_name='学号', null=True, blank=True)
     name = models.CharField(max_length=100, verbose_name='姓名', default='Unknown')
@@ -72,9 +72,11 @@ class Submission(models.Model):
     file = models.FileField(upload_to=get_upload_path)  # 动态上传路径
     submission_date = models.DateTimeField(auto_now_add=True)
     comments = models.TextField(blank=True, null=True)
-
+    creat_at=models.DateTimeField(auto_now=True)
     def save(self, *args, **kwargs):
         """自动为提交文件生成标准化的文件名"""
+        if self.assignment.due_date < timezone.now():
+            raise ValidationError("作业提交已过截止日期，无法提交！")
         if self.file:
             # 为提交的文件动态生成文件名
             new_filename = f"{self.student.name}_{self.assignment.title}.ipynb"
@@ -94,15 +96,4 @@ class Scores(models.Model):
         return f"{self.student.username} - {self.assignment.title} - {self.score}"
 
 
-class StudentSubmissionStatus(models.Model):
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name='学生')
-    question = models.ForeignKey(Assignment, on_delete=models.CASCADE, verbose_name='作业')
-    has_submitted = models.BooleanField(default=False, verbose_name='是否已提交')
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['student', 'question'], name='unique_student_question')
-        ]
-
-    def __str__(self):
-        return f"{self.student.username} - {self.question.question_text} - {'已提交' if self.has_submitted else '未提交'}"

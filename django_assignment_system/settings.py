@@ -25,8 +25,11 @@ SECRET_KEY = 'django-insecure-hsj-*%406hx_nii!g^ufxh+dg6%%81bxv6b^c#fzs872a-n9j5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['7b3fa2fe.r5.cpolar.cn','127.0.0.1']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://7b3fa2fe.r5.cpolar.cn',
+]
 
 # Application definition
 
@@ -116,7 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 

@@ -4,7 +4,7 @@
 <h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
 
 <div class="section">
-    <h2>作业管理</h2>
+
     <h3>作业列表</h3>
 
     <table class="styled-table">
@@ -22,7 +22,7 @@
             <tr>
                 <td>{{ assignment.title }}</td>
                 <td>{{ assignment.description }}</td>
-                <td>{{ assignment.due_date }}</td>
+                <td>{{ assignment.due_date|date:"Y-m-d H:i" }}</td>
                 <td>
                     {% for status in submission_status %}
                         {% if status.assignment_id == assignment.id %}

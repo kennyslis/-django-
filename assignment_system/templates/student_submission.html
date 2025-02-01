@@ -4,6 +4,13 @@
 <div class="container">
     <h2 class="title">📄 {{ assignment.title }}</h2>
 
+    {% if error_message %}
+    <script>
+        alert("{{ error_message }}");  // 弹出提示框显示错误消息
+        window.location.href = "{% url 'assignment_list' %}"; 
+    </script>
+    {% endif %}
+
     <form method="post" enctype="multipart/form-data" class="assignment-form">
         {% csrf_token %}
         {{ form.as_p }}
@@ -13,7 +20,6 @@
 </div>
 
 <style>
-    /* 外层容器 */
     .container {
         max-width: 500px;
         margin: 40px auto;
@@ -24,21 +30,18 @@
         text-align: center;
     }
 
-    /* 标题样式 */
     .title {
         font-size: 24px;
         color: #333;
         margin-bottom: 20px;
     }
 
-    /* 表单样式 */
     .assignment-form {
         display: flex;
         flex-direction: column;
         gap: 10px;
     }
 
-    /* 表单输入框 */
     .assignment-form input, 
     .assignment-form textarea,
     .assignment-form select {
@@ -49,7 +52,6 @@
         font-size: 16px;
     }
 
-    /* 提交按钮 */
     .submit-btn {
         background-color: #007BFF;
         color: white;
@@ -61,7 +63,6 @@
         transition: background 0.3s ease;
     }
 
-    /* 悬停效果 */
     .submit-btn:hover {
         background-color: #0056b3;
     }

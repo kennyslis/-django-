@@ -23,7 +23,7 @@
                 {% if student.has_submission %}
                     {% for submission in submissions %}
                         {% if submission.student == student %}
-                        {{ submission.submission_date|date:"Y-m-d H:i" }}
+                        {{ submission.creat_at|date:"Y-m-d H:i" }}
 
                         {% endif %}
                     {% endfor %}
@@ -75,8 +75,11 @@
         </tr>
         {% endfor %}
     </tbody>
+    
 </table>
-
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{% url 'export_non_submitted' assignment.id %}" class="button">导出未提交作业学生名单</a>
+</div>
 <style>
 /* 全局样式 */
 body {

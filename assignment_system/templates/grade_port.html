@@ -16,8 +16,6 @@
     </form>
 </div>
 
-
-
 <style>
 /* 全局样式 */
 body {
@@ -42,71 +40,24 @@ body {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* 表格样式 */
-.styled-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.styled-table th, .styled-table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: center;
-}
-
-.styled-table th {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.styled-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.styled-table tr:hover {
-    background-color: #ddd;
-}
-
-/* 链接样式 */
-.action-link {
-    color: #007BFF;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.action-link:hover {
-    text-decoration: underline;
-}
-
-.edit-link {
-    color: #28a745;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.delete-link {
-    color: #dc3545;
-    text-decoration: none;
-    font-weight: bold;
-}
-
 /* 表单样式 */
 .styled-form {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: space-between; /* 确保表单元素在一行 */
+    width: 40%; /* 确保表单占满宽度 */
 }
 
 .styled-form label {
     font-weight: bold;
+    margin-right: 10px; /* 给标签添加间距 */
 }
 
 .styled-form select, .styled-form input {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 5px;
+    width: 50%; /* 限制选择框宽度 */
 }
 
 .styled-form button {
@@ -131,7 +82,6 @@ body {
     text-decoration: none;
     border-radius: 5px;
     font-weight: bold;
-    margin-top: 10px;
     transition: background 0.3s;
 }
 

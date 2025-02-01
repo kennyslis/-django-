@@ -21,6 +21,7 @@ urlpatterns = [
     path('teacher/grade_port', views.grade_port, name='grade_port'),
     path('teacher/change_pass/', views.change_pass_html, name='change_pass_html'),
     path('check_grade',views.check_grade,name='check_grade'),
+     path('export_non_submitted/<int:assignment_id>/', views.export_non_submitted, name='export_non_submitted'),
 ]
 
 if settings.DEBUG:

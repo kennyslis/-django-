@@ -2,6 +2,12 @@
 
 {% block content %}
 <div class="container">
+    {% if error_message %}
+    <script>
+        alert("{{ error_message }}"); 
+         location.reload();
+    </script>
+    {% endif %}
     <h2 class="title">📌 作业列表</h2>
     <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
 

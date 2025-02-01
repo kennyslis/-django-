@@ -1,16 +1,20 @@
+from time import timezone
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Assignment, Submission,CustomUser,StudentSubmissionStatus,Scores
+from .models import Assignment, Submission,CustomUser,Scores
 from .forms import SubmissionForm, AssignmentForm,ScoreForm
 from django.contrib.auth import authenticate, login,get_user_model
 from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse, HttpResponseRedirect,JsonResponse
 from django.contrib.auth.decorators import user_passes_test,login_required
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 import csv
 import urllib.parse
 from django.contrib import messages 
 import nbformat
+from django.core.exceptions import ValidationError
 from nbconvert import HTMLExporter
+from django.db.models import Max
 def change_pass_html(request):
     students = CustomUser.objects.filter(is_teacher=False)  # 获取所有学生
     return render(request, 'change_pass.html', {
@@ -171,24 +175,18 @@ def create_assignment(request):
 # 查看已提交作业
 def view_submissions(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    
-    # 获取所有学生
     students = CustomUser.objects.filter(is_teacher=False)
-    
-    # 获取所有提交记录
     submissions = Submission.objects.filter(assignment=assignment)
-
-    
-    # 获取每个学生的成绩
     scores = Scores.objects.filter(assignment=assignment)
     score_dict = {score.student.id: score.score for score in scores}
 
-    # 将每个学生的成绩添加到学生数据中
+    # 获取每个学生的最新提交时间，直接与学生关联
+    student_submission_times = submissions.values('student').annotate(latest_submission_time=Max('creat_at'))
+
+    # 将成绩和提交时间直接关联到学生
     for student in students:
         student.score = score_dict.get(student.id, None)  # 如果没有成绩，score 为 None
-    for student in students:
         student.has_submission = any(submission.student == student for submission in submissions)
-
 
     return render(request, 'view_submissions.html', {
         'assignment': assignment,
@@ -280,23 +278,14 @@ def export_scores(request):#导出成绩
 
 
 def export_non_submitted(request, assignment_id):
-
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    
-
     all_students = CustomUser.objects.filter(is_teacher=False)
-    
- 
     submitted_student_ids = Submission.objects.filter(assignment=assignment).values_list('student_id', flat=True)
-    
-
     non_submitted_students = all_students.exclude(id__in=submitted_student_ids)
-    
     response = HttpResponse(content_type='text/plain')
     response['Content-Disposition'] = f'attachment; filename="non_submitted_{assignment.title}.txt"'
-
     if non_submitted_students.exists():
-        
+        response.write(f"以下学生未提交作业:\n{assignment.title}:\n")
         for student in non_submitted_students:
             response.write(f"{student.name}\n")
     else:
@@ -365,7 +354,13 @@ def assignment_list(request):
 # 学生提交作业@login_required
 @login_required
 def student_submission(request, assignment_id):
+# 截止日期是否已过
     assignment = Assignment.objects.get(id=assignment_id)
+    if timezone.now() > assignment.due_date:
+        return render(request, 'student_submission.html', {
+            'assignment': assignment,
+            'error_message': '作业提交已过截止日期，无法提交！'
+        })
     student = request.user
     submission, created = Submission.objects.get_or_create(student=student, assignment=assignment)
 
@@ -373,8 +368,12 @@ def student_submission(request, assignment_id):
         form = SubmissionForm(request.POST, request.FILES, instance=submission)
         if form.is_valid():
             form.save()
-            return redirect('assignment_list')  # 提交后返回作业列表
+            return render(request, 'student_submission.html', {
+            'assignment': assignment,
+            'error_message': '作业已成功提交！'
+        }) # 提交后返回作业列表
     else:
         form = SubmissionForm(instance=submission)
 
     return render(request, 'student_submission.html', {'form': form, 'assignment': assignment})
+
