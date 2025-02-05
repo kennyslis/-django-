@@ -4,6 +4,10 @@
 <div class="container">
     <h2 class="title">📄 {{ assignment.title }}</h2>
 
+    <p class="due-date">⏳ 截止时间: {{ assignment.due_date|date:"Y-m-d H:i" }}</p>
+
+    <p class="description">📝 描述: {{ assignment.description }}</p>
+    <p class="file">📎 作业文件: <a href="{{ assignment.file.url }}" target="_blank">{{ assignment.file.name }}</a></p>
     {% if error_message %}
     <script>
         alert("{{ error_message }}");  // 弹出提示框显示错误消息

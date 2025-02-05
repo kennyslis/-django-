@@ -32,7 +32,7 @@
 
         /* 输入框 */
         .login-container input {
-            width: 100%;
+            width: 90%;
             padding: 10px;
             margin: 10px 0;
             border: 1px solid #ccc;
@@ -42,8 +42,8 @@
 
         /* 登录按钮 */
         .login-container button {
-            width: 100%;
-            padding: 12px;
+            width: 97%;
+            padding: 10px;
             background-color: #007BFF;
             border: none;
             color: white;
@@ -79,7 +79,7 @@
         <h2>🔑 用户登录</h2>
         <form method="post">
             {% csrf_token %}
-            <input type="text" name="username" id="username" placeholder="用户名" required>
+            <input type="text" name="username" id="username" placeholder="账号" required>
             <input type="password" name="password" id="password" placeholder="密码" required>
             <button type="submit">登录</button>
         </form>

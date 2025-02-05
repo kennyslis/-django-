@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
 <div class="container">
     <h2 class="title">✏️ 编辑作业</h2>
     <h3 class="subtitle">📌 作业：{{ assignment.title }}</h3>
 
-    <form method="post" class="edit-form">
+    <form method="post" class="edit-form" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
 
@@ -16,6 +17,11 @@
 </div>
 
 <style>
+    body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+
+}
     /* 容器样式 */
     .container {
         max-width: 500px;

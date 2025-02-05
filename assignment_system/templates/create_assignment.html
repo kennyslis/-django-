@@ -4,7 +4,7 @@
 <div class="container">
     <h2 class="title">📌 布置作业</h2>
 
-    <form method="post" class="assignment-form">
+    <form method="post" class="assignment-form" enctype="multipart/form-data">
         {% csrf_token %}
         
         <div class="form-group">
@@ -17,6 +17,11 @@
 
 <style>
     /* 页面布局 */
+    body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
     .container {
         max-width: 600px;
         margin: 50px auto;

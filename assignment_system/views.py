@@ -1,4 +1,3 @@
-from time import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Assignment, Submission,CustomUser,Scores
 from .forms import SubmissionForm, AssignmentForm,ScoreForm
@@ -10,9 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import csv
 import urllib.parse
-from django.contrib import messages 
 import nbformat
-from django.core.exceptions import ValidationError
 from nbconvert import HTMLExporter
 from django.db.models import Max
 def change_pass_html(request):
@@ -135,7 +132,7 @@ def edit_assignment(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
 
     if request.method == 'POST':
-        form = AssignmentForm(request.POST, instance=assignment)
+        form = AssignmentForm(request.POST, request.FILES,instance=assignment )
         if form.is_valid():
             form.save()
             return redirect('teacher_assignment_management')  # 编辑后返回作业管理页面
@@ -155,7 +152,7 @@ def delete_assignment(request, assignment_id):
 
     return render(request, 'confirm_delete.html', {'assignment': assignment})
 
-# 作业列表（学生查看）
+
 
 
 
@@ -163,7 +160,7 @@ def delete_assignment(request, assignment_id):
 @user_passes_test(is_teacher)
 def create_assignment(request):
     if request.method == 'POST':
-        form = AssignmentForm(request.POST)
+        form = AssignmentForm(request.POST,request.FILES)
         if form.is_valid():
             form.save()  # 保存作业
             return redirect('teacher_assignment_management')  # 重定向到作业管理页面
@@ -277,6 +274,7 @@ def export_scores(request):#导出成绩
     return response
 
 
+#导出未提交
 def export_non_submitted(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     all_students = CustomUser.objects.filter(is_teacher=False)
@@ -292,6 +290,7 @@ def export_non_submitted(request, assignment_id):
         response.write("所有学生已提交。\n")
     
     return response
+#修改密码
 @user_passes_test(is_teacher)
 def change_password(request):
     if request.method == 'POST':

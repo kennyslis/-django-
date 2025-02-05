@@ -50,20 +50,17 @@ class Question(models.Model):
     def was_published_recently(self):
         return self.pub_date >= timezone.now() - timezone.timedelta(days=1)
 
-
-class Assignment(models.Model):
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    due_date = models.DateTimeField()
-
-    def __str__(self):
-        return self.title
-
 def get_upload_path(instance, filename):
     # 动态生成文件上传路径，基于作业标题
     assignment_title = instance.assignment.title.replace(' ', '_')
     return os.path.join('submissions', assignment_title, filename)
-
+class Assignment(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    due_date = models.DateTimeField()
+    file = models.FileField(upload_to='submissions/', blank=True, null=True) 
+    def __str__(self):
+        return self.title
 
 
 class Submission(models.Model):
