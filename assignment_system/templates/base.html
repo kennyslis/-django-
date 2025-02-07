@@ -70,6 +70,7 @@ main {
                 {% if not user.is_teacher %}
                     <li><a href="{% url 'assignment_list' %}">作业列表</a></li>
                     <li><a href="{% url 'check_grade' %}">查看作业成绩</a></li>
+                    <li><a href="{% url 'update_profile' %}">修改个人信息</a></li>
                     <li><a href="{% url 'custom_login' %}">退出</a></li>
                 {% endif %}
                 {% if user.is_teacher %}

@@ -6,6 +6,7 @@
 <table class="styled-table">
     <thead>
         <tr>
+            <th>学号</th>
             <th>学生姓名</th>
             <th>提交时间</th>
             <th>作业文件</th>
@@ -17,6 +18,7 @@
     <tbody>
         {% for student in students %}
         <tr>
+            <td>{{ student.number }}</td>
             <td>{{ student.name }}</td>
             {% with submission=submissions|dictsort:"student" %}
             <td>

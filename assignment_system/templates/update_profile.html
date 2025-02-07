@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+   
+    <h2 class="title">✏️ 修改个人信息</h2>
+    <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <!-- 学号字段，显示不可编辑 -->
+        <div class="form-group">
+            <label for="number">学号:</label>
+            <input type="text" name="number" id="number" value="{{ user.number }}" required >
+        </div>
+
+        <!-- 用户名字段 -->
+        <div class="form-group">
+            <label for="username">用户名:</label>
+            <input type="text" name="username" id="username" value="{{ user.name }}" required>
+        </div>
+
+        <!-- 邮箱字段 -->
+        <div class="form-group">
+            <label for="email">邮箱地址:</label>
+            <input type="email" name="email" id="email" value="{{ user.email }}" required>
+        </div>
+
+        <button type="submit" class="btn">更新信息</button>
+        {% if error_message %}
+        <div class="error-message">
+            <p style="color: red; font-weight: bold;">{{ error_message }}</p>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<style>
+    /* 全局样式 */
+    .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    /* 标题样式 */
+    .title {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .welcome {
+        font-size: 18px;
+        color: #666;
+    }
+
+    /* 表单 */
+    .form-group {
+        margin: 20px 0;
+        text-align: left;
+    }
+
+    .form-group label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="email"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+
+    /* 按钮 */
+    .btn {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background: #007BFF;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .btn:hover {
+        background: #0056b3;
+    }
+</style>
+
+{% endblock %}

@@ -20,7 +20,11 @@ urlpatterns = [
     path('teacher/grade_port', views.grade_port, name='grade_port'),
     path('teacher/change_pass/', views.change_pass_html, name='change_pass_html'),
     path('check_grade',views.check_grade,name='check_grade'),
-     path('export_non_submitted/<int:assignment_id>/', views.export_non_submitted, name='export_non_submitted'),
+    path('update_profile/', views.update_profile, name='update_profile'),
+    path('export_non_submitted/<int:assignment_id>/', views.export_non_submitted, name='export_non_submitted'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-code/', views.verify_code, name='verify_code'),
+    path('reset-password/', views.reset_password, name='reset_password'),
 ]
 
 if settings.DEBUG:

@@ -45,18 +45,13 @@
         }
 
         .form-group input[type="text"],
-        .form-group input[type="password"] {
+        .form-group input[type="password"],
+        .form-group input[type="email"] { /* 增加 email 输入框的样式 */
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 14px;
-        }
-
-        /* 复选框 */
-        .form-group input[type="checkbox"] {
-            width: auto;
-            margin-right: 5px;
         }
 
         /* 按钮 */
@@ -87,7 +82,11 @@
             
             <div class="form-group">
                 <label for="username">用户账号:</label>
-                <input type="text" name="username" id="username" required placeholder="请以学号注册">
+                <input type="text" name="username" id="username" required placeholder="请最好以学号注册">
+            </div>
+            <div class="form-group">
+                <label for="number">学号:</label>
+                <input type="text" name="number" id="number" required placeholder="输入你的学号">
             </div>
 
             <div class="form-group">
@@ -100,6 +99,10 @@
                 <input type="text" name="name" id="name" required>
             </div>
 
+            <div class="form-group">
+                <label for="email">邮箱:</label>
+                <input type="email" name="email" id="email" required placeholder="请输入邮箱">
+            </div>
 
 
             <button type="submit" class="btn">注册</button>

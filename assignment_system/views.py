@@ -7,6 +7,10 @@ from django.http import HttpResponse, HttpResponseRedirect,JsonResponse
 from django.contrib.auth.decorators import user_passes_test,login_required
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+from django.core.mail import send_mail
+from django.contrib import messages
+import random
 import csv
 import urllib.parse
 import nbformat
@@ -72,23 +76,28 @@ def custom_login(request):
             else:  
                 return redirect('/assignments/')
         else:
-            return HttpResponse('用户名或密码错误', status=401)
+            return render(request, 'custom_login.html', {"error_message": "账户或密码错误."})
 
     return render(request, 'custom_login.html')
 
 # 用户注册功能
 def register_user(request):
     if request.method == 'POST':
+        number=request.POST.get('number')
         username = request.POST.get('username')
         password = request.POST.get('password')
         name = request.POST.get('name')  # 新增：获取学生的姓名
         is_teacher = request.POST.get('is_teacher') == 'on'  # 判断是否为老师
+        email = request.POST.get('email')  # 新增：获取邮箱地址
 
         user = CustomUser.objects.create_user(
             username=username,
             password=password,
             is_teacher=is_teacher,
-            name=name
+            name=name,
+            email=email,
+            number=number
+
         )
       
         login(request, user)
@@ -320,7 +329,86 @@ def change_password(request):
 
 
 ##########################################################学生操作##############################################################
+def verify_code(request):
+    if request.method == 'POST':
+        entered_code = request.POST.get('code')
+        email = request.session.get('email')
+        verification_code = request.session.get('verification_code')
 
+        if entered_code == verification_code:
+            # 如果验证码正确，允许用户设置新密码
+            return redirect('reset_password')
+
+        else:
+
+            return render(request, 'verify_code.html',{
+                'error_message': '验证码错误，请检查后重试。'})
+
+    return render(request, 'verify_code.html')
+def reset_password(request):
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password')
+        email = request.session.get('email')
+
+        user = CustomUser.objects.get(email=email)
+        user.set_password(new_password)
+        user.save()
+
+        messages.success(request, "密码已成功重置，请登录。")
+        return redirect('custom_login')
+
+    return render(request, 'reset_password.html')
+
+def forgot_password(request):#找回密码
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            
+            return render(request, 'forgot_password.html',{
+                'error_message': '该邮箱不存在，请检查后重试。'})
+
+        verification_code = str(random.randint(100000, 999999))
+
+        send_mail(
+            '密码重置验证码',
+            f'您的密码重置验证码是: {verification_code}',
+            '2819024054@qq.com', 
+            [email],
+            fail_silently=False,
+        )
+        request.session['verification_code'] = verification_code
+        request.session['email'] = email
+
+        return redirect('verify_code')  # 重定向到验证码验证页面
+
+    return render(request, 'forgot_password.html')
+@login_required
+def update_profile(request):
+    if request.method == 'POST':
+        # 获取用户输入的信息
+        name = request.POST.get('username')
+        email = request.POST.get('email')
+        number = request.POST.get('number')  # 获取学号
+
+        # 获取当前登录的用户
+        user = request.user
+
+        # 判断学号是否已存在（排除当前用户）
+        if CustomUser.objects.filter(number=number).exclude(id=user.id).exists():
+            error_message = "学号已存在，请选择其他学号。"
+            return render(request, 'update_profile.html', {'user': user, 'error_message': error_message})
+
+        # 更新用户信息
+        user.name = name  # 更新用户名
+        user.email = email  # 更新邮箱
+        user.number = number
+        user.save()
+
+        return render(request, 'update_profile.html', { 'error_message': '个人信息更新成功！','user': user}) # 假设你有个人主页的页面，跳转到个人主页
+
+    return render(request, 'update_profile.html', {'user': request.user})
 def check_grade(request):
     if not request.user.is_authenticated:
         return redirect('custom_login')

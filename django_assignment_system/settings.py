@@ -24,7 +24,13 @@ SECRET_KEY = 'django-insecure-hsj-*%406hx_nii!g^ufxh+dg6%%81bxv6b^c#fzs872a-n9j5
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.qq.com'  # QQ 邮箱的 SMTP 服务器
+EMAIL_PORT = 587  # 使用 TLS 协议的端口
+EMAIL_USE_TLS = True  # 启用 TLS
+EMAIL_HOST_USER = '2819024054@qq.com'  # 用您的 QQ 邮箱地址替换
+EMAIL_HOST_PASSWORD = 'vhvlhdtkmvvzdfib'  # 用您在 QQ 邮箱生成的授权码替换
+DEFAULT_FROM_EMAIL = '2819024054@qq.com'
 ALLOWED_HOSTS = ['42156878.r19.cpolar.top','127.0.0.1','546349b3.r19.cpolar.top']
 
 CSRF_TRUSTED_ORIGINS = [

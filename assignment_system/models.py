@@ -14,7 +14,8 @@ class CustomUser(AbstractUser):
     number = models.IntegerField(unique=True, verbose_name='学号', null=True, blank=True)
     name = models.CharField(max_length=100, verbose_name='姓名', default='Unknown')
     is_teacher = models.BooleanField(default=False, verbose_name="是否为老师")
-    id=models.BigAutoField(primary_key=True)
+    email = models.EmailField(max_length=254, verbose_name='邮箱', blank=True, null=True)  # 新增邮箱字段
+    id = models.BigAutoField(primary_key=True)
 
     def __str__(self):
         return str(self.number)
@@ -37,7 +38,7 @@ class CustomUser(AbstractUser):
             teacher.save()
             return teacher, 'created'
         else:
-            return teacher, 'exists'  
+            return teacher, 'exists'
 
 class Question(models.Model):
     id = models.BigAutoField(primary_key=True)
