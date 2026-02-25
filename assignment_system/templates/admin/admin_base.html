@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-hans">
+<head>
+    <meta charset="UTF-8">
+    <title>系统运维管理后台</title>
+    <style>
+        body { margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+        .admin-sidebar { width: 260px; height: 100vh; background: #1a1c23; color: white; position: fixed; padding-top: 20px; }
+        .admin-sidebar h2 { text-align: center; color: #4CAF50; font-size: 22px; margin-bottom: 30px; }
+        .nav-link { display: block; padding: 15px 25px; color: #94a3b8; text-decoration: none; transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { background: #2d3748; color: white; border-left: 4px solid #4CAF50; }
+        .admin-main { margin-left: 260px; flex: 1; padding: 40px; }
+        .data-card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .btn-del { color: #e53e3e; text-decoration: none; font-weight: bold; }
+        .msg-success { padding: 15px; background: #dcfce7; color: #166534; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="admin-sidebar">
+        <h2>🛡️ 系统管理中心</h2>
+        <a href="{% url 'admin_dashboard' %}" class="nav-link">📊 数据看板总览</a>
+        <a href="{% url 'admin_user_list' %}" class="nav-link">👥 用户权限管理</a>
+        <a href="{% url 'custom_login' %}" style="margin-top: 100px; color: #f56565;" class="nav-link">🚪 退出管理后台</a>
+    </div>
+    <main class="admin-main">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="msg-success">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block admin_content %}{% endblock %}
+    </main>
+</body>
+</html>

@@ -1,88 +1,211 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2 class="title">📌 布置作业</h2>
+<div class="page-wrapper">
+    <div class="main-form-card animate-slide-up">
+        <h2 class="form-title">📝 布置新作业</h2>
+        <form method="post" class="assignment-form" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <div class="section-header">基础信息</div>
+                <div class="standard-fields">
+                    {{ form.as_p }}
+                </div>
+            </div>
 
-    <form method="post" class="assignment-form" enctype="multipart/form-data">
-        {% csrf_token %}
-        
-        <div class="form-group">
-            {{ form.as_p }}  <!-- 自动渲染表单字段 -->
+            <div class="form-section">
+                <div class="section-header">动态表单预览</div>
+                <div id="dynamic-fields-container" class="dynamic-container">
+                    <div class="empty-state">
+                        <span class="icon">✨</span>
+                        <p>生成的预览字段将显示在这里</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="apple-btn-primary">确认发布并同步至学生端</button>
+        </form>
+    </div>
+
+    <aside class="ai-sidebar animate-slide-in">
+        <div class="ai-glass-card">
+            <div class="ai-header">
+                <span class="ai-icon"></span>
+                <h3>AI 智能助手</h3>
+            </div>
+            <p class="ai-desc">告诉 AI 你需要学生提交什么内容，它将自动配置技术参数。</p>
+            
+            <div class="ai-interactive-area">
+                <textarea id="ai-prompt" placeholder="例如：姓名，学号，提交一个.ipynb格式的实验报告"></textarea>
+                <button type="button" id="generate-btn" class="ai-generate-btn">
+                    <span>开始智能识别</span>
+                </button>
+            </div>
+
+            <div class="ai-tips">
+                <div class="tip-item">💡 提到 <b>ipynb</b> 或 <b>zip</b> 会自动限制上传格式</div>
+                <div class="tip-item">💡 输入 <b>心得</b> 会自动生成长文本框</div>
+            </div>
         </div>
-
-        <button type="submit" class="submit-btn">📤 提交作业</button>
-    </form>
+    </aside>
 </div>
 
 <style>
-    /* 页面布局 */
-    body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+/* 核心布局修复 */
+.page-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 30px;
+    padding: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-    .container {
-        max-width: 600px;
-        margin: 50px auto;
-        padding: 20px;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
+/* 左侧主卡片 */
+.main-form-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 40px;
+    border: 1px solid #e5e5ea;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+}
+.form-title { font-size: 24px; font-weight: 700; color: #1d1d1f; margin-bottom: 30px; }
 
-    /* 标题样式 */
-    .title {
-        text-align: center;
-        font-size: 24px;
-        color: #333;
-        margin-bottom: 20px;
-    }
+.form-section { margin-bottom: 35px; }
+.section-header { 
+    font-size: 13px; font-weight: 700; color: #86868b; 
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 20px; border-bottom: 1px solid #f2f2f7; padding-bottom: 8px;
+}
 
-    /* 表单整体样式 */
-    .assignment-form {
-        display: flex;
-        flex-direction: column;
-    }
+/* 适配 Django form.as_p 的样式 */
+.standard-fields p { margin-bottom: 20px; }
+.standard-fields label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
+.standard-fields input, .standard-fields textarea, .standard-fields select {
+    width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #d1d1d6;
+    background: #fbfbfd; font-size: 15px; transition: 0.2s; box-sizing: border-box;
+}
+.standard-fields input:focus { border-color: #007aff; background: #fff; box-shadow: 0 0 0 4px rgba(0,122,255,0.1); outline: none; }
 
-    /* Django 默认表单的样式优化 */
-    .assignment-form p {
-        margin-bottom: 15px;
-    }
+/* 动态生成项预览样式 */
+.preview-item {
+    background: #fbfbfd; border: 1px solid #e5e5ea; padding: 20px;
+    border-radius: 16px; margin-bottom: 15px; transition: 0.3s;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.preview-item:hover { border-color: #007aff; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+.preview-item label { display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #1d1d1f; margin-bottom: 12px; }
+.accept-badge { background: #ff3b30; color: #fff; font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 800; }
+.preview-input-mock { width: 100%; padding: 10px; background: #eee; border: none; border-radius: 8px; color: #999; cursor: not-allowed; }
 
-    .assignment-form label {
-        font-weight: bold;
-        display: block;
-        margin-bottom: 5px;
-    }
+/* 右侧 AI 侧边栏 */
+.ai-glass-card {
+    position: sticky; top: 30px;
+    background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px);
+    border-radius: 24px; padding: 30px; border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+}
+.ai-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.ai-icon { font-size: 24px; background: #fff; padding: 8px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.ai-header h3 { font-size: 17px; margin: 0; color: #1d1d1f; }
+.ai-desc { font-size: 13px; color: #86868b; line-height: 1.5; margin-bottom: 20px; }
 
-    .assignment-form input,
-    .assignment-form textarea,
-    .assignment-form select {
-        width: 100%;
-        padding: 10px;
-        margin-top: 5px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 16px;
-    }
+#ai-prompt {
+    width: 100%; height: 120px; padding: 15px; border-radius: 16px; border: 1px solid #d1d1d6;
+    background: #fff; font-size: 14px; resize: none; box-sizing: border-box; margin-bottom: 15px;
+}
+.ai-generate-btn {
+    width: 100%; background: #10a37f; color: #fff; border: none; padding: 14px;
+    border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s;
+}
+.ai-generate-btn:hover { background: #0e8c6d; transform: translateY(-2px); }
 
-    /* 提交按钮 */
-    .submit-btn {
-        background: #007BFF;
-        color: white;
-        font-size: 18px;
-        padding: 12px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background 0.3s;
-        text-align: center;
-    }
+.ai-tips { margin-top: 25px; border-top: 1px solid #e5e5ea; padding-top: 20px; }
+.tip-item { font-size: 12px; color: #86868b; margin-bottom: 10px; }
 
-    .submit-btn:hover {
-        background: #0056b3;
-    }
+.apple-btn-primary {
+    width: 100%; background: #007aff; color: #fff; border: none; padding: 18px;
+    border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.3s;
+}
+.apple-btn-primary:hover { opacity: 0.9; box-shadow: 0 8px 25px rgba(0,122,255,0.3); }
+
+.empty-state { text-align: center; padding: 40px; color: #c7c7cc; border: 2px dashed #e5e5ea; border-radius: 16px; }
+.empty-state .icon { font-size: 32px; display: block; margin-bottom: 10px; }
+
+/* 动画 */
+@keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.animate-slide-up { animation: slideUp 0.6s ease-out; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1000px) {
+    .page-wrapper { grid-template-columns: 1fr; }
+    .ai-sidebar { order: -1; }
+}
 </style>
 
+<script>
+    // 逻辑完全保留，仅在渲染 HTML 时适配了新的美化样式
+    document.getElementById('generate-btn').onclick = async function() {
+        const prompt = document.getElementById('ai-prompt').value.trim();
+        const btn = this;
+
+        if (!prompt) {
+            alert("请先输入您的表单需求！");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner">⏳</span> 识别逻辑中...';
+
+        try {
+            const response = await fetch("{% url 'ai_generate_form_config' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ prompt: prompt })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const container = document.getElementById('dynamic-fields-container');
+                container.innerHTML = ''; // 清除 empty state
+                
+                const fields = Array.isArray(data.config) ? data.config : [data.config];
+
+                fields.forEach(field => {
+                    if(!field.label) return; 
+                    
+                    const item = document.createElement('div');
+                    item.className = 'preview-item';
+                    
+                    let acceptHtml = field.accept ? `<span class="accept-badge">限定: ${field.accept}</span>` : "";
+                    const safeJson = JSON.stringify(field).replace(/"/g, '&quot;');
+                    
+                    item.innerHTML = `
+                        <label>
+                            <span>${field.label}</span>
+                            ${acceptHtml}
+                        </label>
+                        <input type="${field.type}" class="preview-input-mock" placeholder="学生提交端展示效果" disabled>
+                        <input type="hidden" name="custom_fields_data" value="${safeJson}">
+                    `;
+                    container.appendChild(item);
+                });
+            } else {
+                alert("AI 生成失败: " + data.message);
+            }
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            alert("请求失败，请检查后端 Ollama 服务是否开启。");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "重新智能识别";
+        }
+    };
+</script>
 {% endblock %}

@@ -1,233 +1,173 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
+<div class="main-dashboard-wrapper">
+    <section class="top-stats-row">
+        <div class="welcome-banner">
+            <span class="avatar-box">👨‍🏫</span>
+            <div class="banner-text">
+                <h1>欢迎您，{{ user.name }} 老师</h1>
+         
+            </div>
+        </div>
 
-<div class="section">
+        <div class="quick-stats-group">
+            <div class="stat-card">
+                <span class="label">进行中任务</span>
+                <span class="value">{{ assignments|length }}</span>
+            </div>
+            <a href="{% url 'create_assignment' %}" class="btn-primary-action">✨ 布置新作业</a>
+        </div>
+    </section>
 
-    <h3>作业列表</h3>
-
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>作业标题</th>
-                <th>作业描述</th>
-                <th>截止时间</th>
-                <th>学生提交状态</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for assignment in assignments %}
-            <tr>
-                <td>{{ assignment.title }}</td>
-                <td>{{ assignment.description }}</td>
-                <td>{{ assignment.due_date|date:"Y-m-d H:i" }}</td>
-                <td>
-                    {% for status in submission_status %}
-                        {% if status.assignment_id == assignment.id %}
-                            {% if status.status|length > 0 %}
-                                <a href="{% url 'view_submissions' assignment.id %}" class="action-link">查看作业</a>
-                            {% else %}
-                                <span class="not-submitted">未提交</span>
-                            {% endif %}
-                        {% endif %}
+    <div class="assignment-data-card">
+        <div class="card-header-bar">
+            <h2>📋 作业管理中心</h2>
+        </div>
+        
+        <div class="table-scroller">
+            <table class="assignment-table grid-lines zebra-stripes">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">任务标题</th>
+                        <th style="width: 25%;">截止状态</th>
+                        <th style="width: 25%;">提交进度</th>
+                        <th style="text-align: center;">批改入口</th>
+                        <th style="text-align: center;">快捷管理</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr>
+                        <td class="cell-primary">
+                            <span class="book-icon">📘</span>
+                            <div>
+                                <span class="title-bold">{{ assignment.title }}</span>
+                                <small class="desc-fade">{{ assignment.description|truncatechars:30 }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="status-box">
+                                {% if assignment.due_date < now %}
+                                    <span class="badge badge-expired">已截止</span>
+                                {% else %}
+                                    <span class="badge badge-active">进行中</span>
+                                {% endif %}
+                                <span class="date-sub">{{ assignment.due_date|date:"Y-m-d H:i" }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress-wrapper">
+                                {% for submitted in submission_status %}
+                                    {% if submitted.assignment_id == assignment.id %}
+                                        <div class="progress-info">
+                                            <span>{{ submitted.submitted_count }}/{{ students_quantity }}</span>
+                                            <strong>{% widthratio submitted.submitted_count students_quantity 100 %}%</strong>
+                                        </div>
+                                        <div class="bar-rail">
+                                            <div class="bar-track" style="width: {% widthratio submitted.submitted_count students_quantity 100 %}%"></div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'view_submissions' assignment.id %}" class="btn-grade-pill">进入批改</a>
+                        </td>
+                        <td class="action-cell" style="text-align: center;">
+                            <a href="{% url 'edit_assignment' assignment.id %}" class="link-edit">编辑</a>
+                            <span class="v-line">|</span>
+                            <a href="{% url 'delete_assignment' assignment.id %}" class="link-del">删除</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty-hint">📭 暂无作业，点击上方按钮发布。</td></tr>
                     {% endfor %}
-                </td>
-                <td>
-                    <a href="{% url 'edit_assignment' assignment.id %}" class="edit-link">编辑</a> |
-                    <a href="{% url 'delete_assignment' assignment.id %}" class="delete-link">删除</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <a href="{% url 'create_assignment' %}" class="button">布置新作业</a>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
-
-{% if message %}
-    <div id="success-message" class="success-message">
-        {{ message }}
-    </div>
-    <script>
-        setTimeout(function() {
-            document.getElementById('success-message').style.opacity = '0';
-            setTimeout(function() {
-                document.getElementById('success-message').style.display = 'none';
-            }, 500);  // 0.5秒后完全隐藏
-        }, 3000);  // 3秒后开始淡出
-    </script>
-{% endif %}
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function () {
-        $("#change-password-form").submit(function (event) {
-            event.preventDefault();  // 阻止默认表单提交
-
-            let formData = $(this).serialize();  // 获取表单数据
-            let csrfToken = $("input[name=csrfmiddlewaretoken]").val();  // 获取 CSRF Token
-
-            $.ajax({
-                url: "{% url 'change_password' %}",  
-                type: "POST",
-                data: formData,
-                headers: { "X-CSRFToken": csrfToken },  
-                success: function (response) {
-                    if (response.status === "success") {
-                        $("#password-message").css("color", "green").text(response.message).show();
-                    } else {
-                        $("#password-message").css("color", "red").text(response.message).show();
-                    }
-                },
-                error: function () {
-                    $("#password-message").css("color", "red").text("请求失败，请稍后再试。").show();
-                }
-            });
-        });
-    });
-</script>
 <style>
-/* 全局样式 */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-
+/* 核心修复逻辑：适配 base.html 的 12.4% 侧边栏宽度 */
+:root {
+    --primary-blue: #007aff;
+    --danger-red: #ff3b30;
+    --success-green: #34c759;
+    --bg-gray: #f5f5f7;
+    --border-light: #e5e5ea;
 }
 
-/* 标题样式 */
-.title {
-    color: #333;
-    text-align: center;
+.main-dashboard-wrapper {
+    padding: 20px 40px;
+    background-color: #fbfbfd;
+    min-height: 100vh;
 }
 
-/* 区块样式 */
-.section {
-    background: white;
-    padding: 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-/* 表格样式 */
-.styled-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.styled-table th, .styled-table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: center;
-}
-
-.styled-table th {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.styled-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.styled-table tr:hover {
-    background-color: #ddd;
-}
-
-/* 链接样式 */
-.action-link {
-    color: #007BFF;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.action-link:hover {
-    text-decoration: underline;
-}
-
-.edit-link {
-    color: #28a745;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.delete-link {
-    color: #dc3545;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-/* 表单样式 */
-.styled-form {
+/* 顶部概览栏布局 */
+.top-stats-row {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    background: #fff;
+    padding: 25px 40px;
+    border-radius: 24px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
+.welcome-banner { display: flex; align-items: center; gap: 20px; }
+.avatar-box { font-size: 40px; background: var(--bg-gray); padding: 10px; border-radius: 18px; }
+.banner-text h1 { font-size: 22px; color: #1d1d1f; margin: 0; }
+.banner-text p { font-size: 13px; color: #86868b; margin-top: 5px; }
+
+.quick-stats-group { display: flex; align-items: center; gap: 30px; }
+.stat-card { text-align: center; border-right: 1px solid var(--border-light); padding-right: 30px; }
+.stat-card .label { display: block; font-size: 11px; color: #86868b; font-weight: 700; text-transform: uppercase; }
+.stat-card .value { font-size: 24px; color: var(--primary-blue); font-weight: 800; }
+
+.btn-primary-action {
+    background: var(--primary-blue); color: white; padding: 12px 28px;
+    border-radius: 14px; text-decoration: none; font-weight: 600;
 }
 
-.styled-form label {
-    font-weight: bold;
+/* 数据卡片与表格修复 */
+.assignment-data-card {
+    background: #fff; border-radius: 24px; border: 1px solid var(--border-light);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03); overflow: hidden;
 }
+.card-header-bar { padding: 25px 40px; border-bottom: 1px solid var(--border-light); background: #fbfbfd; }
+.card-header-bar h2 { font-size: 18px; color: #1d1d1f; margin: 0; }
 
-.styled-form select, .styled-form input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
+.assignment-table { width: 100%; border-collapse: collapse; }
+.assignment-table th { background: #fbfbfd; padding: 20px 25px; text-align: left; font-size: 13px; color: #86868b; border-bottom: 1px solid var(--border-light); }
+.assignment-table td { padding: 20px 25px; border-bottom: 1px solid #f2f2f7; vertical-align: middle; }
 
-.styled-form button {
-    padding: 8px 15px;
-    border: none;
-    background: #007BFF;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
+/* 网格与进度条细节 */
+.grid-lines th, .grid-lines td { border-right: 1px solid #f2f2f7; }
+.grid-lines th:last-child, .grid-lines td:last-child { border-right: none; }
+.zebra-stripes tbody tr:nth-child(even) { background-color: #fbfbfd; }
 
-.styled-form button:hover {
-    background: #0056b3;
-}
+.cell-primary { display: flex; align-items: center; gap: 15px; }
+.title-bold { display: block; font-weight: 700; color: #1d1d1f; }
+.desc-fade { display: block; color: #86868b; font-size: 12px; }
 
-/* 按钮样式 */
-.button {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #007BFF;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    margin-top: 10px;
-    transition: background 0.3s;
-}
+.progress-wrapper { display: flex; flex-direction: column; gap: 6px; }
+.progress-info { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; }
+.bar-rail { height: 6px; background: #e5e5ea; border-radius: 3px; overflow: hidden; }
+.bar-track { height: 100%; background: var(--success-green); }
 
-.button:hover {
-    background-color: #0056b3;
-}
+.badge { font-size: 10px; padding: 4px 10px; border-radius: 8px; font-weight: 800; display: inline-block; margin-bottom: 5px; }
+.badge-active { background: #e2fbe8; color: var(--success-green); }
+.badge-expired { background: #fff2f2; color: var(--danger-red); }
+.date-sub { display: block; font-size: 12px; color: #86868b; }
 
-/* 成功消息样式 */
-.success-message {
-    padding: 10px;
-    margin: 20px 0;
-    background: #d4edda;
-    color: #155724;
-    border-left: 5px solid #28a745;
-    border-radius: 5px;
-    text-align: center;
-    font-weight: bold;
-    opacity: 1;
-    transition: opacity 0.5s ease;
-}
+.btn-grade-pill { background: #f0f7ff; color: var(--primary-blue); padding: 8px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; border: 1px solid #d0e7ff; }
 
-/* 未提交状态 */
-.not-submitted {
-    color: red;
-    font-weight: bold;
-}
+.action-cell a { text-decoration: none; font-weight: 700; font-size: 13px; }
+.link-edit { color: var(--primary-blue); }
+.link-del { color: var(--danger-red); }
+.v-line { color: #d1d1d6; margin: 0 5px; }
 </style>
-
 {% endblock %}

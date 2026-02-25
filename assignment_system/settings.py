@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-hsj-*%406hx_nii!g^ufxh+dg6%%81bxv6b^c#fzs872a-n9j5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['7b3fa2fe.r5.cpolar.cn','127.0.0.1']
+ALLOWED_HOSTS = ['7b3fa2fe.r5.cpolar.cn','127.0.0.1','1f0976b.r19.cpolar.top','648ade77.r19.cpolar.top','6871088d.r19.cpolar.top']
 
 
 
@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # Custom apps
     'assignment_system',
 ]

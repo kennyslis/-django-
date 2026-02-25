@@ -1,113 +1,246 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
-<div class="section">
-    <h3>导出成绩</h3>
-    <form method="get" action="{% url 'export_scores' %}" class="styled-form">
-        <label for="assignment">选择作业:</label>
-        <select name="assignment" id="assignment">
-            <option value="all">所有作业</option>
-            {% for assignment in assignments %}
-            <option value="{{ assignment.id }}">{{ assignment.title }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit" class="button">导出成绩</button>
-    </form>
+<div class="full-dashboard">
+    <div class="kpi-grid">
+        <div class="kpi-card welcome-kpi">
+            <div class="kpi-content">
+                <span class="emoji">👨‍🏫</span>
+                <div class="text">
+                    <p class="label">当前登录</p>
+                    <h2 class="value">{{ user.name }} 老师</h2>
+                </div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#eef2ff; color:#6366f1;">🎯</div>
+            <div class="kpi-text">
+                <p class="label">成绩中位数</p>
+                <h2 class="value">{{ stats.median|default:"0" }}</h2>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#f0fdf4; color:#22c55e;">📈</div>
+            <div class="kpi-text">
+                <p class="label">全班平均分</p>
+                <h2 class="value">{{ stats.avg|default:"0" }}</h2>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background:#fff7ed; color:#f59e0b;">🏆</div>
+            <div class="kpi-text">
+                <p class="label">最高分</p>
+                <h2 class="value">{{ stats.max|default:"0" }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-main">
+        <div class="charts-stack">
+            <section class="glass-panel">
+                <div class="panel-header"><span class="icon">📊</span> 作业提交概览 (已交 vs 未交)</div>
+                <div class="chart-box">
+                    <canvas id="submissionChart"></canvas>
+                </div>
+            </section>
+
+            <section class="glass-panel" style="margin-top: 25px;">
+                <div class="panel-header"><span class="icon">📦</span> 成绩分布箱线图 (离散统计)</div>
+                <div id="boxplotChart" style="width: 100%; height: 400px;"></div>
+            </section>
+        </div>
+
+        <aside class="glass-panel tools-panel">
+            <div class="panel-header"><span class="icon">🛠️</span> 批量操作中心</div>
+            <div class="control-stack">
+                <div class="field">
+                    <label>导出/下载模式</label>
+                    <select id="export_mode" class="ui-select" onchange="toggleAssignmentList()">
+                        <option value="all">🌐 所有作业汇总</option>
+                        <option value="select">🔍 选择特定作业</option>
+                    </select>
+                </div>
+
+                <div id="assignment_picker_wrapper" class="field animate-pop" style="display: none;">
+                    <label>选择作业 (可多选):</label>
+                    <select id="assignment_ids" class="ui-select multi-list" multiple>
+                        {% for assignment in assignments %}
+                        <option value="{{ assignment.id }}">{{ assignment.title }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="hint">💡 按住 Ctrl/Command 进行多选</p>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="handleAdvancedExport('scores')" class="ui-btn btn-green">📊 导出成绩汇总 (.CSV)</button>
+                    <button onclick="handleAdvancedExport('zip')" class="ui-btn btn-blue">📦 打包学生作业 (.ZIP)</button>
+                </div>
+            </div>
+        </aside>
+    </div>
 </div>
 
 <style>
-/* 全局样式 */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-
-
+/* 核心布局：全宽填充 */
+.full-dashboard {
+    width: 98%;
+    max-width: 1850px;
+    margin: 15px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-family: 'Inter', system-ui, sans-serif;
 }
 
-/* 标题样式 */
-.title {
-    color: #333;
-    text-align: center;
+/* KPI 卡片 */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
 }
-
-/* 区块样式 */
-.section {
+.kpi-card {
     background: white;
-    padding: 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-/* 表单样式 */
-.styled-form {
+    padding: 25px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
-    justify-content: space-between; /* 确保表单元素在一行 */
-    width: 40%; /* 确保表单占满宽度 */
+    gap: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
 }
+.welcome-kpi { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; }
+.welcome-kpi .label { color: rgba(255,255,255,0.8); }
+.kpi-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.kpi-text .label { font-size: 14px; color: #64748b; margin-bottom: 4px; }
+.kpi-text .value { font-size: 28px; font-weight: 800; color: #1e293b; margin: 0; }
+.welcome-kpi .value { color: #fff; }
 
-.styled-form label {
-    font-weight: bold;
-    margin-right: 10px; /* 给标签添加间距 */
+/* 主体内容 */
+.dashboard-main {
+    display: grid;
+    grid-template-columns: 2.8fr 1fr;
+    gap: 25px;
 }
+.glass-panel {
+    background: #fff;
+    border-radius: 24px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+.panel-header {
+    font-size: 18px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 25px;
+    border-left: 5px solid #6366f1;
+    padding-left: 15px;
+    display: flex;
+    align-items: center;
+}
+.panel-header .icon { margin-right: 10px; }
 
-.styled-form select, .styled-form input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    width: 50%; /* 限制选择框宽度 */
-}
+/* 图表容器 */
+.chart-box { height: 350px; position: relative; }
 
-.styled-form button {
-    padding: 8px 15px;
-    border: none;
-    background: #007BFF;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
+/* 控件 */
+.ui-select { width: 100%; padding: 14px; border-radius: 12px; border: 2px solid #e2e8f0; background: #f8fafc; font-size: 15px; margin-top: 8px; }
+.multi-list { height: 350px !important; }
+.hint { font-size: 12px; color: #94a3b8; margin-top: 8px; }
 
-.styled-form button:hover {
-    background: #0056b3;
-}
+/* 按钮 */
+.btn-group { display: flex; flex-direction: column; gap: 15px; margin-top: 25px; }
+.ui-btn { padding: 16px; border-radius: 14px; border: none; font-size: 16px; font-weight: 600; color: white; cursor: pointer; transition: 0.3s; }
+.btn-green { background: #10b981; }
+.btn-blue { background: #3b82f6; }
+.ui-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
 
-/* 按钮样式 */
-.button {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #007BFF;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: background 0.3s;
-}
-
-.button:hover {
-    background-color: #0056b3;
-}
-
-/* 成功消息样式 */
-.success-message {
-    padding: 10px;
-    margin: 20px 0;
-    background: #d4edda;
-    color: #155724;
-    border-left: 5px solid #28a745;
-    border-radius: 5px;
-    text-align: center;
-    font-weight: bold;
-    opacity: 1;
-    transition: opacity 0.5s ease;
-}
-
-/* 未提交状态 */
-.not-submitted {
-    color: red;
-    font-weight: bold;
-}
+.animate-pop { animation: pop 0.3s ease-out; }
+@keyframes pop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+<script>
+// 1. 交互控制
+function toggleAssignmentList() {
+    const isSelect = document.getElementById('export_mode').value === 'select';
+    document.getElementById('assignment_picker_wrapper').style.display = isSelect ? 'block' : 'none';
+}
+
+// 2. 导出逻辑
+function handleAdvancedExport(type) {
+    const mode = document.getElementById('export_mode').value;
+    const ids = Array.from(document.getElementById('assignment_ids').selectedOptions).map(o => o.value);
+    
+    if (type === 'scores') {
+        let url = "{% url 'export_scores' %}?";
+        url += (mode === 'all') ? "assignment=all" : ids.map(id => `assignment=${id}`).join('&');
+        window.location.href = url;
+    } else {
+        if (ids.length > 0) window.location.href = `/assignment/${ids[0]}/download_all/`;
+        else alert("请在列表中选择一个具体作业进行打包。");
+    }
+}
+
+function handleAdvancedExport(type) {
+    const mode = document.getElementById('export_mode').value;
+    const ids = Array.from(document.getElementById('assignment_ids').selectedOptions).map(o => o.value);
+    
+    if (type === 'scores') {
+        // ... 原有的成绩导出逻辑保持不变
+        let url = "{% url 'export_scores' %}?";
+        url += (mode === 'all') ? "assignment=all" : ids.map(id => `assignment=${id}`).join('&');
+        window.location.href = url;
+    } else {
+        // 修改打包逻辑：指向批量下载视图
+        let url = "{% url 'download_batch_submissions' %}?"; // 确保 url name 匹配
+        
+        if (mode === 'all') {
+            // 抓取 Select 列表中所有的作业 ID
+            const allOptions = Array.from(document.querySelectorAll('#assignment_ids option')).map(o => o.value);
+            url += allOptions.map(id => `assignment=${id}`).join('&');
+        } else {
+            if (ids.length === 0) {
+                alert("请先选择至少一个作业。");
+                return;
+            }
+            url += ids.map(id => `assignment=${id}`).join('&');
+        }
+        window.location.href = url;
+    }
+}
+// 3. 柱状图 (Chart.js)
+const subCtx = document.getElementById('submissionChart').getContext('2d');
+new Chart(subCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for stat in submission_status %}"{{ stat.assignment_title }}",{% endfor %}],
+        datasets: [
+            { label: '已提交', data: [{% for stat in submission_status %}{{ stat.submitted_count }},{% endfor %}], backgroundColor: '#10b981', borderRadius: 6 },
+            { label: '未提交', data: [{% for stat in submission_status %}{{ stat.not_submitted_count }},{% endfor %}], backgroundColor: '#f43f5e', borderRadius: 6 }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+
+// 4. 箱线图 (ECharts)
+var boxChart = echarts.init(document.getElementById('boxplotChart'));
+boxChart.setOption({
+    tooltip: { trigger: 'item', axisPointer: { type: 'shadow' } },
+    grid: { left: '8%', right: '8%', bottom: '15%' },
+    xAxis: { type: 'category', data: {{ boxplot_labels|safe }}, splitLine: { show: false } },
+    yAxis: { type: 'value', name: '分数', min: 0, max: 100 },
+    series: [{
+        name: '成绩区间',
+        type: 'boxplot',
+        data: {{ boxplot_data|safe }},
+        itemStyle: { color: '#6366f1', borderColor: '#4f46e5', borderWidth: 2 }
+    }]
+});
+window.onresize = function() { boxChart.resize(); };
+</script>
 {% endblock %}

@@ -2,8 +2,6 @@
 
 {% block content %}
 
-
-
 <div class="container">
     <h2 class="title">📌 作业成绩</h2>
     <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
@@ -12,10 +10,14 @@
         {% for assignment, score in assignment_scores.items %}
             <li class="assignment-item">
                 <span class="assignment-title">📖 {{ assignment.title }}</span>
-                {% if score %}
+                {% if not assignment.has_submission %}
+                    <span class="status no-status-submitted">未提交作业</span>
+                {% else %}
+                {% if score.score > 0 %}
                     <span class="assignment-score">成绩: {{ score.score }}</span>
                 {% else %}
                     <span class="no-score">尚未评分</span>
+                {% endif %}
                 {% endif %}
             </li>
         {% empty %}

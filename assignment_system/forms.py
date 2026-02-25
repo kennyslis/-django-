@@ -16,7 +16,7 @@ class SubmissionForm(forms.ModelForm):
         file = self.cleaned_data.get('file')
         if file:
             if not file.name.endswith('.ipynb'):
-                raise ValidationError("只能提交 .ipynb 格式的文件。")
+                raise ValidationError("只能提交 .ipynb 格式的文件!!!!。")
         return file
 class AssignmentForm(forms.ModelForm):
     class Meta:

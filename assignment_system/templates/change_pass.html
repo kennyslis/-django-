@@ -1,155 +1,162 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="title">欢迎您, {{ user.name }} 老师！！</h2>
+<div class="fixed-centered-wrapper">
+    <div class="minimal-header">
+        <div class="header-content">
+            <span class="lock-icon">🛡️</span>
+            <div>
+                <h1>重置学生密码</h1>
+                <p>管理员：{{ user.name }} 老师，请设置高强度密码以确保安全</p>
+            </div>
+        </div>
+    </div>
 
-<div class="section">
-    <h4>修改密码</h4>
-    <form id="change-password-form" class="styled-form">
-        {% csrf_token %}
-        
-        <label for="student">选择学生:</label>
-        <select name="student" id="student">
-            <option value="all">所有学生</option>
-            {% for student in students %}
-                <option value="{{ student.id }}">{{ student.name }}</option>
-            {% endfor %}
-        </select>
+    <div class="auth-card-apple">
+        <form id="change-password-form" class="standard-apple-form">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <label for="student">目标学生</label>
+                <div class="select-container">
+                    <select name="student" id="student" class="apple-input">
+                        <option value="all">📁 所有学生 (批量重置)</option>
+                        {% for student in students %}
+                            <option value="{{ student.id }}">👤 {{ student.name }} (学号: {{ student.number }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
-        <label for="new_password">输入新密码:</label>
-        <input type="password" name="new_password" id="new_password" required>
+            <div class="form-row">
+                <label for="new_password">设置新密码</label>
+                <div class="input-container">
+                    <input type="password" name="new_password" id="new_password" 
+                           class="apple-input" required placeholder="请输入新密码...">
+                    <span class="secure-icon"></span>
+                </div>
+            </div>
 
-        <button type="submit" class="button">修改密码</button>
-    </form>
+            <button type="submit" id="submit-btn" class="apple-btn-blue">确认修改密码</button>
+        </form>
 
-    <p id="password-message" style="color: green; display: none;"></p>
+        <div id="password-message" class="toast-feedback"></div>
+    </div>
 </div>
 
-{% if message %}
-    <div id="success-message" class="success-message">
-        {{ message }}
-    </div>
-    <script>
-        setTimeout(function() {
-            document.getElementById('success-message').style.opacity = '0';
-            setTimeout(function() {
-                document.getElementById('success-message').style.display = 'none';
-            }, 500);  // 0.5秒后完全隐藏
-        }, 3000);  // 3秒后开始淡出
-    </script>
-{% endif %}
+<style>
+/* 核心修复：完全适配侧边栏，防止错位 */
+.fixed-centered-wrapper {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto; /* 保证在主内容区居中 */
+    animation: fadeIn 0.5s ease;
+}
+
+/* 顶部导航 */
+.minimal-header {
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e5ea;
+}
+.header-content { display: flex; align-items: center; gap: 20px; }
+.lock-icon { font-size: 30px; background: #f2f2f7; padding: 12px; border-radius: 12px; }
+.header-content h1 { font-size: 24px; color: #1d1d1f; margin: 0; }
+.header-content p { font-size: 13px; color: #86868b; margin-top: 5px; }
+
+/* 苹果风卡片设计 */
+.auth-card-apple {
+    background: #ffffff;
+    max-width: 500px;
+    margin: 0 auto; /* 核心：在 content 区域内部居中 */
+    padding: 50px;
+    border-radius: 28px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+    border: 1px solid #e5e5ea;
+}
+
+.form-row { margin-bottom: 25px; }
+.form-row label { display: block; font-size: 13px; font-weight: 700; color: #1d1d1f; margin-bottom: 10px; }
+
+.apple-input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid #d1d1d6;
+    background: #fbfbfd;
+    font-size: 16px;
+    outline: none;
+    transition: 0.2s;
+    box-sizing: border-box;
+}
+.apple-input:focus { border-color: #007aff; background: #fff; box-shadow: 0 0 0 4px rgba(0,122,255,0.1); }
+
+/* 按钮设计 */
+.apple-btn-blue {
+    width: 100%;
+    padding: 16px;
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.apple-btn-blue:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,122,255,0.3); }
+
+/* 状态反馈 */
+.toast-feedback {
+    margin-top: 25px;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+}
+.toast-success { background: #e2fbe8; color: #34c759; }
+.toast-error { background: #fff2f2; color: #ff3b30; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function () {
         $("#change-password-form").submit(function (event) {
-            event.preventDefault();  // 阻止默认表单提交
-
-            let formData = $(this).serialize();  // 获取表单数据
-            let csrfToken = $("input[name=csrfmiddlewaretoken]").val();  // 获取 CSRF Token
+            event.preventDefault();
+            const $btn = $("#submit-btn");
+            const $msg = $("#password-message");
+            
+            $btn.prop('disabled', true).text('正在同步数据...');
+            
+            let formData = $(this).serialize();
+            let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
 
             $.ajax({
-                url: "{% url 'change_password' %}",  
+                url: "{% url 'change_password' %}",
                 type: "POST",
                 data: formData,
-                headers: { "X-CSRFToken": csrfToken },  
+                headers: { "X-CSRFToken": csrfToken },
                 success: function (response) {
+                    $msg.removeClass('toast-success toast-error').show();
                     if (response.status === "success") {
-                        $("#password-message").css("color", "green").text(response.message).show();
+                        $msg.addClass('toast-success').text("✅ " + response.message);
+                        $("#new_password").val(""); 
                     } else {
-                        $("#password-message").css("color", "red").text(response.message).show();
+                        $msg.addClass('toast-error').text("❌ " + response.message);
                     }
                 },
                 error: function () {
-                    $("#password-message").css("color", "red").text("请求失败，请稍后再试。").show();
+                    $msg.addClass('toast-error').text("⚠️ 网络超时，请重试").show();
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('确认修改密码');
                 }
             });
         });
     });
 </script>
-<style>
-/* 全局样式 */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-
-}
-
-/* 标题样式 */
-.title {
-    color: #333;
-    text-align: center;
-}
-
-/* 区块样式 */
-.section {
-    background: white;
-    padding: 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-/* 表单样式 */
-.styled-form {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.styled-form label {
-    font-weight: bold;
-}
-
-.styled-form select, .styled-form input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.styled-form button {
-    padding: 8px 15px;
-    border: none;
-    background: #007BFF;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.styled-form button:hover {
-    background: #0056b3;
-}
-
-/* 按钮样式 */
-.button {
-    padding: 10px 20px;
-    background-color: #007BFF;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    margin-top: 10px;
-    transition: background 0.3s;
-}
-
-.button:hover {
-    background-color: #0056b3;
-}
-
-/* 成功消息样式 */
-.success-message {
-    padding: 10px;
-    margin: 20px 0;
-    background: #d4edda;
-    color: #155724;
-    border-left: 5px solid #28a745;
-    border-radius: 5px;
-    text-align: center;
-    font-weight: bold;
-    opacity: 1;
-    transition: opacity 0.5s ease;
-}
-</style>
-
 {% endblock %}

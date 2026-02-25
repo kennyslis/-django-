@@ -1,179 +1,366 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2 class="title">作业提交情况</h2>
+<div class="dashboard-fluid">
+    <div class="glass-header">
+        <div class="header-info">
+            <h1><span class="icon">📁</span> {{ assignment.title }} <small>阅卷管理中心</small></h1>
+        </div>
+        
+        <div class="header-controls">
+            <div class="select-group">
+                <label>快速跳转</label>
+                <select class="custom-select" onchange="window.location.href='/view_submissions/' + this.value + '/'">
+                    {% for other in all_assignments %}
+                        <option value="{{ other.id }}" {% if other.id == assignment.id %}selected{% endif %}>{{ other.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="select-group">
+                <label>状态过滤</label>
+                <select class="custom-select" onchange="location = this.value;">
+                    <option value="{% url 'view_submissions' assignment.id %}?filter=all" {% if filter == 'all' %}selected{% endif %}>显示全部学生</option>
+                    <option value="{% url 'view_submissions' assignment.id %}?filter=not_submitted" {% if filter == 'not_submitted' %}selected{% endif %}>只看未提交</option>
+                </select>
+            </div>
+            <button onclick="openBatchModal()" class="btn-gradient">批量统一打分</button>
+        </div>
+    </div>
 
-<table class="styled-table">
-    <thead>
-        <tr>
-            <th>学号</th>
-            <th>学生姓名</th>
-            <th>提交时间</th>
-            <th>作业文件</th>
-            <th>评论</th>
-            <th>成绩</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for student in students %}
-        <tr>
-            <td>{{ student.number }}</td>
-            <td>{{ student.name }}</td>
-            {% with submission=submissions|dictsort:"student" %}
-            <td>
-                {% if student.has_submission %}
-                    {% for submission in submissions %}
-                        {% if submission.student == student %}
-                        {{ submission.creat_at|date:"Y-m-d H:i" }}
-
+    <div class="glass-body">
+        <table class="data-table zebra-table">
+            <thead>
+                <tr>
+                    <th class="col-check">
+                        <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)">
+                    </th>
+                    <th>学号</th>
+                    <th>姓名</th>
+                    <th>提交状态与时间</th>
+                    <th>作业附件内容</th>
+                    <th class="col-score">实时成绩 (点击修改)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr id="row-{{ student.id }}" class="{% if not student.has_submission %}is-empty{% endif %}">
+                    <td>
+                        {% if student.has_submission %}
+                            <input type="checkbox" name="selected_students" value="{{ student.id }}" class="student-checkbox">
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>
+                        <span class="id-tag">{{ student.username }}</span>
+                    </td>
+                    <td>
+                        <span class="name-text">{{ student.name }}</span>
+                    </td>
+                    <td>
+                        {% if student.has_submission %}
+                            {% for sub in submissions %}
+                                {% if sub.student == student %}
+                                    <div class="status-badge success">已提交</div>
+                                    <div class="time-stamp">{{ sub.creat_at|date:"Y/m/d H:i" }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <div class="status-badge danger large-text">未提交</div>
                         {% endif %}
-                    {% endfor %}
-                {% else %}
-                    <span class="status-not-submitted">未提交作业</span>
-                {% endif %}
-            </td>
-            
-            <td>
-                {% for submission in submissions %}
-                    {% if submission.student == student %}
-                    <a href="{% url 'view_ipynb' submission.id %}" target="_blank" class="action-link">
-                        查看作业
-                    </a>
-                    
-                    {% endif %}
-                    {% empty %}
-                        <span class="status-not-submitted">未提交作业</span>
-                    {% endfor %}
-            </td>
-            <td>
-                {% for submission in submissions %}
-                    {% if submission.student == student %}
-                        {{ submission.comments|default:"无" }}
-                    {% endif %}
-                {% empty %}
-                    <span class="status-none">无评论</span>
+                    </td>
+                    <td>
+                        <div class="file-grid">
+                            {% if student.has_submission %}
+                                {% for label, value in student.dynamic_content %}
+                                    {% if ".doc" in value or ".pdf" in value or ".ipynb" in value or ".zip" in value %}
+                                        <div class="file-card">
+                                            {% if ".ipynb" in value %}
+                                                <a href="{% url 'view_ipynb' student.sub_id %}" target="_blank" class="preview-btn">在线预览</a>
+                                            {% endif %}
+                                            <a href="/media/{{ value }}" target="_blank" class="download-icon" title="下载附件">💾</a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}-{% endif %}
+                        </div>
+                    </td>
+                    <td class="editable-cell">
+                        {% if student.has_submission %}
+                            <div class="score-view" onclick="activateEdit({{ student.id }}, this)">
+                                {{ student.score|default:"待评分" }}
+                            </div>
+                            <input type="number" class="score-editor" style="display:none;" 
+                                   value="{{ student.score|default:'' }}" 
+                                   onblur="submitSingleScore({{ student.id }}, this)"
+                                   onkeydown="if(event.keyCode==13) this.blur()">
+                        {% else %}-{% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </td>
-            <td>
-                {% if student.score %}
-                    {{ student.score }}
-                {% else %}
-                    <span class="status-not-graded">未评分</span>
-                {% endif %}
-            </td>
-            <td>
-                {% for submission in submissions %}
-                    {% if submission.student == student %}
-                        <a href="{% url 'grade_submission' assignment.id submission.student.id %}" class="button">评分</a>
-                    {% endif %}
-                {% endfor %}
-            </td>
-            {% endwith %}
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6" class="status-empty">暂无学生记录</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-    
-</table>
-<div style="text-align: center; margin-top: 20px;">
-    <a href="{% url 'export_non_submitted' assignment.id %}" class="button">导出未提交作业学生名单</a>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer-bar">
+        <button id="copy-to-clipboard" class="btn-outline" onclick="copyUnsubmittedViaView()">📋 复制未提交名单</button>
+        <a href="{% url 'download_all_submissions' assignment.id %}" class="btn-outline">📦 批量打包下载 (.ZIP)</a>
+    </div>
+
+    <div id="batchModal" class="modal-blur">
+        <div class="modal-card">
+            <h3>批量评分操作</h3>
+            <p id="modal-info">您已选中 0 位学生</p>
+            <input type="number" id="batch-input-val" placeholder="在此输入分值 (0-100)">
+            <div class="modal-footer">
+                <button onclick="closeBatchModal()" class="btn-text">取消</button>
+                <button onclick="handleBatchSubmit()" class="btn-gradient">确认并同步</button>
+            </div>
+        </div>
+    </div>
 </div>
+
 <style>
-/* 全局样式 */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-
+/* 核心设计规范保持不变 */
+:root {
+    --primary: #4CAF50;
+    --primary-light: #e8f5e9;
+    --text-main: #2c3e50;
+    --text-muted: #94a3b8;
+    --zebra-bg: #f8fafc;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --shadow: 0 10px 30px rgba(0,0,0,0.08);
 }
 
-/* 标题样式 */
-.title {
-    color: #333;
+.dashboard-fluid { width: 98%; max-width: 1800px; margin: 20px auto; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+.glass-header { 
+    background: var(--glass-bg); padding: 30px 40px; border-radius: 24px; box-shadow: var(--shadow);
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);
+}
+.header-info h1 { font-size: 24px; color: var(--text-main); margin: 0; font-weight: 800; }
+.header-info small { display: block; font-size: 13px; color: var(--text-muted); margin-top: 5px; }
+
+.header-controls { display: flex; gap: 30px; align-items: center; }
+.custom-select { padding: 10px 15px; border-radius: 12px; border: 2px solid #f1f5f9; background: #fff; font-weight: 600; cursor: pointer; }
+
+.btn-gradient { background: linear-gradient(135deg, #4CAF50, #45a049); color: white; border: none; padding: 12px 25px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+
+.glass-body { background: #fff; border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; border: 1px solid #eee; }
+.zebra-table tbody tr:nth-child(even) { background-color: var(--zebra-bg); }
+.zebra-table tbody tr:hover { background-color: #f1f5f9; transition: background 0.2s; }
+
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th { background: #f1f5f9; padding: 20px; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+.data-table td { padding: 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+
+.large-text { font-size: 1.1rem !important; padding: 8px 18px !important; letter-spacing: 1px; }
+.status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.success { background: #dcfce7; color: #16a34a; }
+.danger { background: #fee2e2; color: #dc2626; box-shadow: 0 2px 10px rgba(220, 38, 38, 0.1); }
+
+.editable-cell { cursor: pointer; text-align: center; }
+.score-view { font-size: 18px; font-weight: 800; color: var(--text-main); }
+.score-editor { width: 70px; padding: 8px; border: 2px solid var(--primary); border-radius: 8px; text-align: center; font-weight: bold; }
+.footer-bar { text-align: center; margin-top: 30px; display: flex; justify-content: center; gap: 20px; }
+.btn-outline { background: transparent; border: 2px solid #e2e8f0; padding: 10px 20px; border-radius: 12px; color: var(--text-main); font-weight: 600; cursor: pointer; text-decoration: none; }
+
+.modal-blur { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; }
+.modal-card { background: #fff; padding: 40px; border-radius: 30px; width: 380px; text-align: center; }
+
+.id-tag { color: #2563eb; font-weight: bold; font-family: monospace; }
+.name-text { font-weight: 600; color: var(--text-main); }
+/* 弹出动画 */
+.animate-pop-in {
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* 批量评分模态框专用设计规范 */
+:root {
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(0, 0, 0, 0.5); /* 遮罩层加深以突出卡片 */
+    --modal-accent: #007aff;
+    --modal-text: #1d1d1f;
+    --modal-secondary: #86868b;
+    --modal-border: #e5e5ea;
+}
+
+/* 1. 全屏遮罩层：纯色半透明 */
+.modal-blur { 
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100vw; 
+    height: 100vh; 
+    background: var(--modal-overlay); /* 去掉高斯模糊，使用纯色遮罩 */
+    z-index: 9999; 
+    align-items: center; 
+    justify-content: center;
+}
+
+/* 2. 弹窗卡片：高对比度实色卡片 */
+.modal-card { 
+    background: var(--modal-bg); 
+    padding: 40px; 
+    border-radius: 28px; 
+    width: 380px; 
+    text-align: center; 
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2); /* 强化阴影以补偿失去的模糊感 */
+    border: 1px solid var(--modal-border);
+    animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 3. 头部文案 */
+.modal-card h3 { 
+    font-size: 20px; 
+    color: var(--modal-text); 
+    margin: 0 0 8px 0; 
+    font-weight: 700; 
+}
+
+.modal-card p { 
+    font-size: 14px; 
+    color: var(--modal-secondary); 
+    margin-bottom: 30px; 
+}
+
+/* 4. 分数输入框：强化视觉焦点 */
+#batch-input-val {
+    width: 85%;
+    padding: 15px;
+    border-radius: 16px;
+    border: 2px solid var(--modal-border);
+    background: #f5f5f7;
+    font-size: 32px; 
+    font-weight: 800;
     text-align: center;
-    margin-bottom: 20px;
+    outline: none;
+    transition: all 0.2s ease;
+    margin-bottom: 35px;
+    color: var(--modal-accent);
 }
 
-/* 表格样式 */
-.styled-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
+#batch-input-val:focus {
+    border-color: var(--modal-accent);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
 }
 
-.styled-table th, .styled-table td {
-    border: 1px solid #ddd;
-    padding: 12px;
-    text-align: center;
+/* 5. 底部按钮组 */
+.modal-footer { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
 }
 
-.styled-table th {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.styled-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.styled-table tr:hover {
-    background-color: #f1f1f1;
-}
-
-/* 状态样式 */
-.status-not-submitted {
-    color: red;
-    font-weight: bold;
-}
-
-.status-not-graded {
-    color: orange;
-    font-weight: bold;
-}
-
-.status-none {
-    color: #888;
-}
-
-.status-empty {
-    text-align: center;
+/* 确认按钮 */
+.btn-gradient { 
+    background: var(--modal-accent); 
+    color: white; 
+    border: none; 
+    padding: 16px; 
+    border-radius: 14px; 
+    font-weight: 700; 
     font-size: 16px;
-    font-weight: bold;
-    color: #555;
+    cursor: pointer; 
+    transition: 0.3s; 
 }
 
-/* 链接样式 */
-.action-link {
-    color: #007BFF;
-    text-decoration: none;
-    font-weight: bold;
+.btn-gradient:hover { 
+    transform: translateY(-1px); 
+    box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
 }
 
-.action-link:hover {
-    text-decoration: underline;
+/* 取消按钮 */
+.btn-text { 
+    background: transparent; 
+    border: none; 
+    color: var(--modal-secondary); 
+    font-weight: 600; 
+    font-size: 14px;
+    padding: 10px;
+    cursor: pointer; 
 }
 
-/* 按钮样式 */
-.button {
-    display: inline-block;
-    padding: 8px 12px;
-    background-color: #007BFF;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: background 0.3s;
+.btn-text:hover { 
+    color: var(--modal-text); 
 }
 
-.button:hover {
-    background-color: #0056b3;
+/* 6. 动画定义 */
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 </style>
 
+<script>
+function activateEdit(id, view) {
+    const input = view.parentElement.querySelector('.score-editor');
+    view.style.display = 'none';
+    input.style.display = 'inline-block';
+    input.focus();
+}
+
+function copyUnsubmittedViaView() {
+    fetch("{% url 'export_non_submitted' assignment.id %}")
+    .then(r => r.json())
+    .then(data => {
+        if(data.student_list) {
+            navigator.clipboard.writeText(data.student_list).then(() => {
+                alert("📋 未提交名单已复制！\n\n");
+            });
+        }
+    });
+}
+
+function submitSingleScore(id, input) {
+    const view = input.parentElement.querySelector('.score-view');
+    const val = input.value;
+    if (val === "" && view.innerText !== "待评分") { exitEdit(); return; }
+
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('score', val);
+    fd.append('student_ids', id);
+
+    fetch("{% url 'batch_grade' assignment.id %}", { method: 'POST', body: fd })
+    .then(r => r.json()).then(data => {
+        if (data.status === 'success') {
+            view.innerText = val;
+            input.parentElement.style.background = "#f0fdf4";
+            setTimeout(() => input.parentElement.style.background = "transparent", 1000);
+        }
+        exitEdit();
+    });
+    function exitEdit() { input.style.display = 'none'; view.style.display = 'block'; }
+}
+
+function toggleSelectAll(m) {
+    document.querySelectorAll('.student-checkbox').forEach(c => c.checked = m.checked);
+}
+
+function openBatchModal() {
+    const count = document.querySelectorAll('.student-checkbox:checked').length;
+    if (count === 0) return alert('请先勾选需要评分的学生');
+    document.getElementById('modal-info').innerText = `您已选中 ${count} 位学生`;
+    document.getElementById('batchModal').style.display = 'flex';
+}
+
+function closeBatchModal() { document.getElementById('batchModal').style.display = 'none'; }
+
+function handleBatchSubmit() {
+    const score = document.getElementById('batch-input-val').value;
+    const ids = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(c => c.value);
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('score', score);
+    ids.forEach(id => fd.append('student_ids', id));
+    fetch("{% url 'batch_grade' assignment.id %}", { method: 'POST', body: fd })
+    .then(r => r.json()).then(data => { if(data.status==='success') location.reload(); });
+}
+</script>
 {% endblock %}

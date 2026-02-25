@@ -31,12 +31,12 @@ EMAIL_USE_TLS = True  # 启用 TLS
 EMAIL_HOST_USER = '2819024054@qq.com'  # 用您的 QQ 邮箱地址替换
 EMAIL_HOST_PASSWORD = 'vhvlhdtkmvvzdfib'  # 用您在 QQ 邮箱生成的授权码替换
 DEFAULT_FROM_EMAIL = '2819024054@qq.com'
-ALLOWED_HOSTS = ['42156878.r19.cpolar.top','127.0.0.1','546349b3.r19.cpolar.top']
+ALLOWED_HOSTS = ['76187om0zn74.vicp.fun','127.0.0.1','546349b3.r19.cpolar.top','1f0976b.r19.cpolar.top','648ade77.r19.cpolar.top','6871088d.r19.cpolar.top']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://7b3fa2fe.r5.cpolar.cn',
+    'https://76187om0zn74.vicp.fun',
     'http://42156878.r19.cpolar.top',
-    'http://546349b3.r19.cpolar.top'
+    'http://546349b3.r19.cpolar.top','http://6871088d.r19.cpolar.top'
 ]
 
 # Application definition
@@ -49,8 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Custom apps
     'assignment_system',
 ]
 

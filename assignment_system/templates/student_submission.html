@@ -4,72 +4,60 @@
 <div class="container">
     <h2 class="title">📄 {{ assignment.title }}</h2>
 
-    <p class="due-date">⏳ 截止时间: {{ assignment.due_date|date:"Y-m-d H:i" }}</p>
+    <div class="info-section">
+        <p>⏳ <b>截止时间:</b> {{ assignment.due_date|date:"Y-m-d H:i" }}</p>
+        <p>📝 <b>作业描述:</b> {{ assignment.description }}</p>
+    </div>
 
-    <p class="description">📝 描述: {{ assignment.description }}</p>
-    <p class="file">📎 作业文件: <a href="{{ assignment.file.url }}" target="_blank">{{ assignment.file.name }}</a></p>
     {% if error_message %}
     <script>
-        alert("{{ error_message }}");  // 弹出提示框显示错误消息
-        window.location.href = "{% url 'assignment_list' %}"; 
+        alert("{{ error_message }}");  
+        {% if "成功" in error_message %}
+            window.location.href = "{% url 'assignment_list' %}"; 
+        {% endif %}
     </script>
     {% endif %}
 
     <form method="post" enctype="multipart/form-data" class="assignment-form">
         {% csrf_token %}
-        {{ form.as_p }}
+        
+        {% if assignment.custom_fields %}
+        <div class="ai-custom-fields-section">
+            <h4 class="ai-section-title">🤖 老师要求的提交内容：</h4>
+            {% for field in assignment.custom_fields %}
+                <div class="custom-form-group">
+                    <label class="custom-label">
+                        {{ field.label }}：
+                        {% if field.type == 'file' and field.accept %}
+                            <span style="color:#e74c3c; font-size:12px;">(仅限 {{ field.accept }})</span>
+                        {% endif %}
+                    </label>
 
-        <button type="submit" class="submit-btn">📤 提交作业</button>
+                    {% if field.type == 'file' %}
+                        <input type="file" name="custom_{{ field.name }}" accept="{{ field.accept|default:'*' }}" class="custom-file-input" required>
+                    {% elif field.type == 'textarea' %}
+                        <textarea name="custom_{{ field.name }}" class="custom-input" required placeholder="请输入内容..."></textarea>
+                    {% else %}
+                        <input type="{{ field.type }}" name="custom_{{ field.name }}" class="custom-input" required placeholder="请输入...">
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <p style="text-align:center; color:#999; padding:20px;">老师未设置该作业的具体提交项。</p>
+        {% endif %}
+
+        <button type="submit" class="submit-btn">📤 确认提交作业</button>
     </form>
 </div>
 
 <style>
-    .container {
-        max-width: 500px;
-        margin: 40px auto;
-        background: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        text-align: center;
-    }
-
-    .title {
-        font-size: 24px;
-        color: #333;
-        margin-bottom: 20px;
-    }
-
-    .assignment-form {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .assignment-form input, 
-    .assignment-form textarea,
-    .assignment-form select {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 16px;
-    }
-
-    .submit-btn {
-        background-color: #007BFF;
-        color: white;
-        padding: 12px;
-        border: none;
-        border-radius: 5px;
-        font-size: 18px;
-        cursor: pointer;
-        transition: background 0.3s ease;
-    }
-
-    .submit-btn:hover {
-        background-color: #0056b3;
-    }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+    .title { font-size: 26px; color: #2c3e50; text-align: center; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .info-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 5px solid #3498db; }
+    .ai-custom-fields-section { background: #f0f7ff; padding: 20px; border-radius: 10px; border: 1px dashed #3498db; }
+    .custom-label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+    .custom-input, .custom-file-input { width: 100%; padding: 12px; border: 1px solid #dcdfe6; border-radius: 6px; box-sizing: border-box; }
+    .submit-btn { width: 100%; background-color: #3498db; color: white; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
 </style>
-
 {% endblock %}

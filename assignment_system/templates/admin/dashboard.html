@@ -1,0 +1,23 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block admin_content %}
+<h1>欢迎回来，管理员</h1>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 30px;">
+    <div class="data-card">
+        <h3>学生总数</h3>
+        <p style="font-size: 32px; font-weight: bold; color: #4CAF50;">{{ stats.total_students }}</p>
+    </div>
+    <div class="data-card">
+        <h3>教师总数</h3>
+        <p style="font-size: 32px; font-weight: bold; color: #2196F3;">{{ stats.total_teachers }}</p>
+    </div>
+    <div class="data-card">
+        <h3>在线作业</h3>
+        <p style="font-size: 32px; font-weight: bold; color: #FF9800;">{{ stats.total_assignments }}</p>
+    </div>
+    <div class="data-card">
+        <h3>提交总记录</h3>
+        <p style="font-size: 32px; font-weight: bold; color: #9C27B0;">{{ stats.total_submissions }}</p>
+    </div>
+</div>
+{% endblock %}

@@ -5,19 +5,51 @@
     {% if error_message %}
     <script>
         alert("{{ error_message }}"); 
-         location.reload();
+        location.reload();
     </script>
     {% endif %}
-    <h2 class="title">📌 作业列表</h2>
-    <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
+
+    <div class="header">
+        <h2 class="title">📌 作业列表</h2>
+        <h3 class="welcome">🎉 欢迎您, {{ user.name }}</h3>
+        <div class="filter-options">
+            <label for="assignment-filter">查看作业:</label>
+            <select id="assignment-filter" onchange="location = this.value;">
+                <option value="{% url 'assignment_list' %}?filter=all" {% if filter == 'all' %}selected{% endif %}>所有作业</option>
+                <option value="{% url 'assignment_list' %}?filter=not_submitted" {% if filter == 'not_submitted' %}selected{% endif %}>未提交作业</option>
+            </select>
+        </div>
+    </div>
 
     <ul class="assignment-list">
         {% for assignment in assignments %}
             <li class="assignment-item">
-                <a href="{% url 'student_submission' assignment.id %}" class="assignment-link">
-                    📖 {{ assignment.title }}
-                </a>
-                <span class="due-date">⏳ 截止时间: {{ assignment.due_date|date:"Y-m-d H:i" }}</span>
+                <div class="assignment-info">
+                    <a  class="assignment-link">
+                        <h2>📖 {{ assignment.title }}</h2>
+                    </a>
+                    {% if assignment.due_date > now or assignment.has_submission %}
+                    <span class="due-date">⏳ 截止时间: {{ assignment.due_date|date:"Y-m-d H:i" }}</span>
+                    {% endif %}
+                    <div class="submit-actions">
+                        {% if assignment.has_submission %}
+                        <a href="{% url 'student_submission' assignment.id %}" class="submit-button">重新提交</a>
+                        {% else %}
+                        <a href="{% url 'student_submission' assignment.id %}" class="submit-button">查看作业</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="status-container">
+                    {% if assignment.has_submission %}
+                    <span class="status status-submitted">已提交作业</span>
+                    {% else %}
+                    {% if assignment.due_date < now %}
+                    <span class="status status-overdue">作业已过期，无法提交</span>
+                    {% else %}
+                    <span class="status status-not-submitted">未提交作业</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </li>
         {% empty %}
             <li class="no-assignment">暂无作业</li>
@@ -26,83 +58,154 @@
 </div>
 
 <style>
-    /* 全局样式 */
-    .container {
-        max-width: 600px;
-        margin: 40px auto;
-        background: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        text-align: center;
-    }
+/* 全局样式 */
+.container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: left;
+    margin-top: 20px;
+}
 
-    /* 标题样式 */
-    .title {
-        font-size: 24px;
-        color: #333;
-        margin-bottom: 10px;
-    }
+/* 标题样式 */
+.title {
+    font-size: 30px;
+    color: #333;
+    margin-bottom: 10px;
+}
 
-    .welcome {
-        font-size: 18px;
-        color: #666;
-    }
+.welcome {
+    font-size: 20px;
+    color: #777;
+}
 
-    /* 作业列表 */
-    .assignment-list {
-        list-style-type: none;
-        padding: 0;
-        margin-top: 20px;
-    }
+/* 过滤选项 */
+.filter-options {
+    margin-top: 15px;
+}
 
-    .assignment-item {
-        background: #f9f9f9;
-        padding: 15px;
-        margin: 10px 0;
-        border-radius: 8px;
-        transition: background-color 0.3s ease, transform 0.2s;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+.filter-options select {
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
 
-    /* 交错背景色 */
-    .assignment-item:nth-child(even) {
-        background: #e6f7ff;
-    }
+/* 作业列表 */
+.assignment-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 25px;
+}
 
-    /* 悬停效果 */
-    .assignment-item:hover {
-        background: #cce7ff;
-        transform: translateY(-2px);
-    }
+.assignment-item {
+    background: #f9f9f9;
+    padding: 20px;
+    margin: 30px 0;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap; /* 使元素在屏幕窄时换行 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.2s;
+    position: relative; /* 为绝对定位的状态提供参照 */
+}
 
-    /* 链接美化 */
-    .assignment-link {
-        font-size: 18px;
-        font-weight: bold;
-        color: #007BFF;
-        text-decoration: none;
-    }
+.assignment-item:hover {
+    background: #e6f7ff;
+    transform: translateY(-2px);
+}
 
-    .assignment-link:hover {
-        text-decoration: underline;
-        color: #0056b3;
-    }
+/* 作业信息部分 */
+.assignment-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
 
-    /* 截止时间 */
-    .due-date {
-        font-size: 14px;
-        color: #555;
-    }
+.assignment-link {
+    font-size: 18px;
+    font-weight: bold;
+    color: #007BFF;
+    text-decoration: none;
+}
 
-    /* 没有作业时的提示 */
-    .no-assignment {
-        padding: 15px;
-        color: #999;
-        font-style: italic;
-    }
+.assignment-link:hover {
+    text-decoration: underline;
+    color: #0056b3;
+}
+
+.due-date {
+    font-size: 14px;
+    color: #555;
+    margin-top: 5px;
+}
+
+/* 提交按钮 */
+.submit-actions {
+    margin-top: 10px;
+}
+
+.submit-button {
+    background-color: #007BFF;
+    color: white;
+    padding: 8px 15px;
+    font-size: 16px;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.submit-button:hover {
+    background-color: #0056b3;
+}
+
+/* 状态文本 */
+.status-container {
+    text-align: center;
+    flex-basis: 100%;
+    position: absolute;  /* 使用绝对定位将其放置在中心 */
+    top: 50%; /* 垂直居中 */
+    left: 50%; /* 水平居中 */
+    transform: translate(-50%, -50%); /* 确保完全居中 */
+}
+
+/* 状态颜色 */
+.status {
+    font-size: 30px; /* 增大字体 */
+    font-weight: bold;
+    text-align: center; /* 居中显示 */
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+/* 针对已提交作业的状态 */
+.status-submitted {
+    color: #28a745;
+}
+
+/* 针对未提交作业的状态 */
+.status-not-submitted {
+    color: #dc3545;
+}
+
+/* 针对过期作业的状态 */
+.status-overdue {
+    color: #dc3545;
+}
+
+/* 无作业时提示 */
+.no-assignment {
+    padding: 15px;
+    color: #999;
+    font-style: italic;
+    text-align: center;
+}
+
 </style>
 
 {% endblock %}

@@ -26,10 +26,10 @@ class CustomUser(AbstractUser):
         teacher, created = cls.objects.get_or_create(
             username=username,
             defaults={  
-                'is_staff': True,     # 表示有后台管理权限
+                'is_staff': True,    
                 'is_superuser': False, 
-                'name': 'Teacher',    # 可以设置老师的默认名称
-                'is_teacher': True,   # 设置 is_teacher 为 True，表示是老师
+                'name': 'Teacher',   
+                'is_teacher': True,  
             }
         )
         
@@ -60,28 +60,35 @@ class Assignment(models.Model):
     description = models.TextField()
     due_date = models.DateTimeField()
     file = models.FileField(upload_to='submissions/', blank=True, null=True) 
+    custom_fields = models.JSONField(default=list, blank=True, null=True)
     def __str__(self):
         return self.title
 
 
 class Submission(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    assignment = models.ForeignKey('Assignment', on_delete=models.CASCADE)
+    assignment = models.ForeignKey('Assignment', on_delete=models.CASCADE, related_name='submissions')
     file = models.FileField(upload_to=get_upload_path)  # 动态上传路径
     submission_date = models.DateTimeField(auto_now_add=True)
     comments = models.TextField(blank=True, null=True)
     creat_at=models.DateTimeField(auto_now=True)
+    custom_answers = models.JSONField(default=dict, blank=True, null=True)
+    def __str__(self):
+        return f"{self.student.name} - {self.assignment.title}"
     def save(self, *args, **kwargs):
         """自动为提交文件生成标准化的文件名"""
         if self.assignment.due_date < timezone.now():
             raise ValidationError("作业提交已过截止日期，无法提交！")
         if self.file:
-            # 为提交的文件动态生成文件名
+       
             new_filename = f"{self.student.name}_{self.assignment.title}.ipynb"
             self.file.name = new_filename
 
         super(Submission, self).save(*args, **kwargs)
-
+@receiver(post_save, sender=Submission)
+def create_score_for_submission(sender, instance, created, **kwargs):
+    if created:
+        Scores.objects.get_or_create(student=instance.student, assignment=instance.assignment, defaults={'score': 0})
 
 class Scores(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

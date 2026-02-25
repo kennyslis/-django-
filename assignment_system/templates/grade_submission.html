@@ -12,6 +12,11 @@
     </form>
 
     <a href="{% url 'view_submissions' submission.assignment.id %}" class="back-link">🔙 返回作业提交记录</a>
+    {% if message %}
+        <div class="error-message">
+            <p style="color: red; font-weight: bold;">{{ message }}</p>
+        </div>
+        {% endif %}
 </div>
 
 <style>

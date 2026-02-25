@@ -1,4 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from sympy import Q
+import numpy as np
+from django.db.models import Max, Avg
+from django.conf import settings
 from .models import Assignment, Submission,CustomUser,Scores
 from .forms import SubmissionForm, AssignmentForm,ScoreForm
 from django.contrib.auth import authenticate, login,get_user_model
@@ -7,60 +11,250 @@ from django.http import HttpResponse, HttpResponseRedirect,JsonResponse
 from django.contrib.auth.decorators import user_passes_test,login_required
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
+from django.db.models import Exists, OuterRef
 from django.core.mail import send_mail
 from django.contrib import messages
 import random
 import csv
-import urllib.parse
 import nbformat
 from nbconvert import HTMLExporter
-from django.db.models import Max
+import pandas as pd
+import json
+import requests
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import os
+from django.core.files.storage import default_storage
+import zipfile
+from django.http import FileResponse
+from io import BytesIO
+def is_teacher(user):
+    return user.is_teacher  # 确保是老师
+# 2. 批量下载：按 姓名+学号 规范后的文件名打包
+@user_passes_test(is_teacher)
+def download_all_submissions(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    submissions = Submission.objects.filter(assignment=assignment)
+    
+    byte_data = BytesIO()
+    with zipfile.ZipFile(byte_data, 'w') as zip_file:
+        for sub in submissions:
+            if sub.custom_answers:
+                for val in sub.custom_answers.values():
+                    if isinstance(val, str):
+                        full_path = os.path.join(settings.MEDIA_ROOT, val)
+                        if os.path.exists(full_path):
+                            # arcname 设为：作业标题/姓名_学号.后缀
+                            # 这样解压后就是一个以作业名命名的文件夹
+                            arcname = os.path.join(assignment.title, os.path.basename(full_path))
+                            zip_file.write(full_path, arcname=arcname)
+    
+    byte_data.seek(0)
+    response = FileResponse(byte_data, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{assignment.title}_submissions.zip"'
+    return response
+
+@user_passes_test(is_teacher)
+def download_batch_submissions(request):
+    """批量打包多个作业：根文件夹 > 作业文件夹 > 学生文件"""
+    assignment_ids = request.GET.getlist('assignment')
+    
+    if not assignment_ids:
+        return HttpResponse("未选择任何作业进行打包", status=400)
+
+    assignments = Assignment.objects.filter(id__in=assignment_ids)
+    
+    # 定义压缩包内的根文件夹名称（例如：2025-12-31_作业打包汇总）
+    root_dir = f"Batch_Export_{timezone.now().strftime('%Y%m%d')}"
+    
+    byte_data = BytesIO()
+    with zipfile.ZipFile(byte_data, 'w') as zip_file:
+        for assignment in assignments:
+            submissions = Submission.objects.filter(assignment=assignment)
+            
+            for sub in submissions:
+                if sub.custom_answers:
+                    for val in sub.custom_answers.values():
+                        # 识别物理路径
+                        if isinstance(val, str) and (val.startswith('submissions/') or '/' in val):
+                            full_path = os.path.join(settings.MEDIA_ROOT, val)
+                            
+                            if os.path.exists(full_path):
+                                filename = os.path.basename(full_path)
+                                
+                                # 【核心修改】：构建三级路径
+                                # 结构：根文件夹 / 作业标题 / 学生文件名
+                                arcname = os.path.join(root_dir, assignment.title, filename)
+                                
+                                zip_file.write(full_path, arcname=arcname)
+    
+    byte_data.seek(0)
+    zip_filename = f"{root_dir}.zip"
+    response = FileResponse(byte_data, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+    return response
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ai_generate_form_config(request):
+    try:
+        data = json.loads(request.body)
+        user_prompt = data.get('prompt', '')
+        
+        # 核心：重新平衡“按需生成”与“格式识别”的逻辑
+        system_prompt = (
+            "你是一个极其死板且精准的 Django 表单 JSON 生成器。请严格根据用户需求生成 JSON 数组。\n"
+            "【字段识别规则】：\n"
+            "1. **普通文本识别**：如果用户提到‘姓名’、‘学号’、‘心得’等，type 必须设为 'text' 或 'textarea'。\n"
+            "2. **文件格式识别**：只要用户提到后缀（如 ipynb, zip），type 必须设为 'file'，并包含 'accept' 字段（如 '.ipynb'）。\n"
+            "3. **全中文 Label**：所有的 'label' 字段必须使用准确的中文描述。\n"
+            "4. **按需生成**：用户没提到的字段绝对不要生成。但只要提到了，就必须生成。\n"
+            "5. **统一命名**：所有字段的 'name' 统一固定为 'task'。\n"
+            "只返回纯 JSON 数组，严禁包含任何 Markdown 标签（如 ```json）或解释文字。"
+        )
+
+        # views.py
+        response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+        "model": "qwen2:7b",  # 必须与 ollama list 中的名称完全一致
+        "prompt": f"{system_prompt}\n用户当前需求：{user_prompt}", 
+        "stream": False
+    },
+    timeout=30
+    )
+
+        if response.status_code == 200:
+            raw_response = response.json().get('response', '').strip()
+            # 强化清理逻辑，防止 image_ff2ee2.png 所示的解析错误
+            clean_json = raw_response.replace('```json', '').replace('```', '').strip()
+            
+            parsed_data = json.loads(clean_json)
+            form_config = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+            return JsonResponse({'status': 'success', 'config': form_config})
+            
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f"AI 识别失败: {str(e)}"})
+@login_required
+def import_students(request):
+    if request.method == 'POST' and request.FILES['excel_file']:
+        excel_file = request.FILES['excel_file']
+        df = pd.read_excel(excel_file)
+        new_students = [] 
+        for _, row in df.iterrows():
+            number = row['学号']
+            print(number)
+            name = row['姓名']
+            email=row['邮箱']
+            password = str(random.randint(100000, 999999))
+            user, created = CustomUser.objects.get_or_create(
+                number=number,  
+                defaults={
+                    'username': str(number),
+                    'name': name,
+                    'password': password,
+                    'email': email,
+                    'is_teacher': False,  
+                }
+            )
+            if created:
+                user.set_password(password) 
+                user.save()
+                new_students.append({
+                    'number': number,
+                    'name': name,
+                    'email': email,
+                    'password': password
+                })
+
+            send_mail(
+            '密码',
+            f'您的账号是{number},您的密码是: {password}',
+            '2819024054@qq.com', 
+            [email],
+            fail_silently=False,
+        )
+        messages.success(request, "学生信息导入成功！")
+     
+        return render(request, 'import_students.html', {'new_students': new_students})
+
+    return render(request, 'import_students.html')  
 def change_pass_html(request):
     students = CustomUser.objects.filter(is_teacher=False)  # 获取所有学生
     return render(request, 'change_pass.html', {
         'students': students
     })
+@user_passes_test(is_teacher)
 def grade_port(request):
-    assignments = Assignment.objects.all()  # 获取所有作业
-    students = CustomUser.objects.filter(is_teacher=False)  # 获取所有学生
+    assignments = Assignment.objects.all()
+    students_count = CustomUser.objects.filter(is_teacher=False).count()
+    
+    # 1. 核心指标计算：显式转换为 float 解决 Decimal 报错
+    all_scores = [float(s) for s in Scores.objects.filter(score__gt=0).values_list('score', flat=True)]
+    
+    stats_summary = {
+        'avg': round(np.mean(all_scores), 1) if all_scores else 0,
+        'median': round(np.median(all_scores), 1) if all_scores else 0,
+        'max': max(all_scores) if all_scores else 0,
+        'total_submissions': Submission.objects.count()
+    }
 
-    submission_status = []  # 用于存储每个作业的提交状态
+    # 2. 箱线图数据 (成绩分布)
+    boxplot_data = []
+    assignment_labels = []
     for assignment in assignments:
-        assignment_status = []  # 该作业的所有学生提交情况
-        for student in students:
-            submission = Submission.objects.filter(assignment=assignment, student=student).first()
-            assignment_status.append({
-                'student': student,
-                'submitted': submission is not None,
-                'submission': submission
-            })
+        a_scores = [float(s) for s in Scores.objects.filter(assignment=assignment, score__gt=0).values_list('score', flat=True)]
+        if len(a_scores) >= 1:
+            res = [
+                float(np.min(a_scores)),
+                float(np.percentile(a_scores, 25)),
+                float(np.median(a_scores)),
+                float(np.percentile(a_scores, 75)),
+                float(np.max(a_scores))
+            ]
+            boxplot_data.append(res)
+            assignment_labels.append(assignment.title)
+
+    # 3. 柱状图数据 (提交率情况)
+    submission_status = []
+    for assignment in assignments:
+        submitted_count = Submission.objects.filter(assignment=assignment).count()
         submission_status.append({
-            'assignment_id': assignment.id,
-            'status': assignment_status
+            'assignment_title': assignment.title,
+            'submitted_count': submitted_count,
+            'not_submitted_count': students_count - submitted_count 
         })
+    
     return render(request, 'grade_port.html', {
         'assignments': assignments,
         'submission_status': submission_status,
-        'students': students
+        'stats': stats_summary,
+        'boxplot_data': json.dumps(boxplot_data),
+        'boxplot_labels': json.dumps(assignment_labels),
+        'now': timezone.now()
     })
 def view_ipynb_as_html(request, submission_id):
-    # 获取作业提交记录
     submission = get_object_or_404(Submission, id=submission_id)
+    file_path = None
+    if submission.custom_answers:
+        for val in submission.custom_answers.values():
+            if isinstance(val, str) and val.lower().endswith('.ipynb'):
+                file_path = val
+                break
+    if not file_path:
+        return HttpResponse("未找到 .ipynb 文件")
 
-    # 读取 `.ipynb` 文件内容（Django 的 FileField 以二进制模式存储）
-    notebook_content = submission.file.read().decode("utf-8")
-
-    # 解析 `.ipynb` 为 JSON
-    notebook = nbformat.reads(notebook_content, as_version=4)
-
-    # 转换为 HTML
-    html_exporter = HTMLExporter()
-    html_exporter.template_name = "classic"
-    body, _ = html_exporter.from_notebook_node(notebook)
-
-    # 返回 HTML 响应
-    return HttpResponse(body, content_type="text/html")
+    try:
+        from django.core.files.storage import default_storage
+        with default_storage.open(file_path, 'rb') as f: # 必须用 rb 模式
+            content_bytes = f.read()
+            notebook_content = content_bytes.decode('utf-8') # 显式解码
+        
+        notebook = nbformat.reads(notebook_content, as_version=4)
+        body, _ = HTMLExporter(template_name="classic").from_notebook_node(notebook)
+        return HttpResponse(body, content_type="text/html")
+    except Exception as e:
+        return HttpResponse(f"预览失败 (请确保文件为UTF-8编码): {str(e)}")
 # 登录功能
 def custom_login(request):
     if request.method == 'POST':
@@ -71,9 +265,14 @@ def custom_login(request):
 
         if user is not None:
             login(request, user)
-            if hasattr(user, 'is_teacher') and user.is_teacher:  # 老师跳转
+            # 1. 优先检查是否是超级管理员
+            if user.is_superuser:
+                return redirect('admin_dashboard')
+            # 2. 老师跳转逻辑
+            elif user.is_teacher:
                 return redirect('/teacher/assignments/')
-            else:  
+            # 3. 学生跳转逻辑
+            else:
                 return redirect('/assignments/')
         else:
             return render(request, 'custom_login.html', {"error_message": "账户或密码错误."})
@@ -105,35 +304,34 @@ def register_user(request):
 
     return render(request, 'register_user.html')
 
-# 判断是否为老师
-def is_teacher(user):
-    return user.is_teacher  # 确保是老师
+
 
 # 老师作业管理
 @user_passes_test(is_teacher)
 def teacher_assignment_management(request):
     assignments = Assignment.objects.all()  # 获取所有作业
-    students = CustomUser.objects.filter(is_teacher=False)  # 获取所有学生
-
+    students = CustomUser.objects.filter(is_teacher=False,is_superuser=False)  # 获取所有学生
+    students_quantity = len(students)  # 总学生数
     submission_status = []  # 用于存储每个作业的提交状态
+    submitted_counts = []  # 用于存储每个作业的已提交人数
+
     for assignment in assignments:
-        assignment_status = []  # 该作业的所有学生提交情况
+        submitted_count = 0  # 该作业的已提交人数
         for student in students:
             submission = Submission.objects.filter(assignment=assignment, student=student).first()
-            assignment_status.append({
-                'student': student,
-                'submitted': submission is not None,
-                'submission': submission
-            })
+            if submission is not None:
+                submitted_count += 1  # 如果提交了作业，则已提交人数加 1
+        
+        # 记录该作业的提交人数
         submission_status.append({
             'assignment_id': assignment.id,
-            'status': assignment_status
+            'submitted_count': submitted_count
         })
 
     return render(request, 'teacher_assignment_management.html', {
         'assignments': assignments,
         'submission_status': submission_status,
-        'students': students
+        'students_quantity': students_quantity,  # 总学生数
     })
 
 @user_passes_test(is_teacher)
@@ -169,70 +367,110 @@ def delete_assignment(request, assignment_id):
 @user_passes_test(is_teacher)
 def create_assignment(request):
     if request.method == 'POST':
-        form = AssignmentForm(request.POST,request.FILES)
+        form = AssignmentForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()  # 保存作业
-            return redirect('teacher_assignment_management')  # 重定向到作业管理页面
+            # 先不提交数据库
+            assignment = form.save(commit=False)
+            
+            # 这里的 'custom_fields_data' 必须对应 create_assignment.html 中隐藏域的 name
+            custom_fields_raw = request.POST.getlist('custom_fields_data')
+            if custom_fields_raw:
+                # 将 JSON 字符串解析为 Python 列表并存入模型
+                assignment.custom_fields = [json.loads(f) for f in custom_fields_raw]
+            
+            assignment.save()
+            return redirect('teacher_assignment_management')
     else:
         form = AssignmentForm()
-
     return render(request, 'create_assignment.html', {'form': form})
 
 # 查看已提交作业
+@user_passes_test(is_teacher)
 def view_submissions(request, assignment_id):
+    filter_type = request.GET.get('filter', 'all') 
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    students = CustomUser.objects.filter(is_teacher=False)
-    submissions = Submission.objects.filter(assignment=assignment)
+    # 保留逻辑：获取所有作业用于页面顶部的快速切换
+    all_assignments = Assignment.objects.all()
+    students = CustomUser.objects.filter(is_teacher=False,is_superuser=False)
+    
+    submissions = Submission.objects.filter(assignment=assignment).select_related('student')
+    submission_dict = {sub.student.id: sub for sub in submissions}
     scores = Scores.objects.filter(assignment=assignment)
     score_dict = {score.student.id: score.score for score in scores}
 
-    # 获取每个学生的最新提交时间，直接与学生关联
-    student_submission_times = submissions.values('student').annotate(latest_submission_time=Max('creat_at'))
-
-    # 将成绩和提交时间直接关联到学生
     for student in students:
-        student.score = score_dict.get(student.id, None)  # 如果没有成绩，score 为 None
-        student.has_submission = any(submission.student == student for submission in submissions)
+        sub = submission_dict.get(student.id)
+        student.score = score_dict.get(student.id, None)
+        student.has_submission = sub is not None
+        student.dynamic_content = []
+        if sub and sub.custom_answers:
+            student.dynamic_content = [(k, v) for k, v in sub.custom_answers.items()]
+            student.sub_id = sub.id
+
+    if filter_type == 'not_submitted':
+        students = [s for s in students if not s.has_submission]
 
     return render(request, 'view_submissions.html', {
         'assignment': assignment,
-        'students': students,  # 获取所有学生
+        'all_assignments': all_assignments, # 传递给模板
+        'students': students, 
         'submissions': submissions,
+        'filter': filter_type,  
     })
+
+# 批量打分
+@csrf_exempt
+@user_passes_test(is_teacher)
+@require_http_methods(["POST"])
+def batch_grade(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    # 接收弹窗传来的统一分数和学生ID列表
+    score_val = request.POST.get('score')
+    student_ids = request.POST.getlist('student_ids')
+    
+    try:
+        if not score_val or not student_ids:
+            return JsonResponse({'status': 'error', 'message': '分数或学生列表不能为空'})
+
+        for s_id in student_ids:
+            student = get_object_or_404(CustomUser, id=s_id)
+            # 更新或创建成绩记录
+            score_obj, _ = Scores.objects.get_or_create(student=student, assignment=assignment)
+            score_obj.score = float(score_val)
+            score_obj.save()
+            
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
 def grade_submission(request, assignment_id, student_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
     student = get_object_or_404(CustomUser, id=student_id)
-
-    # 基于作业和学生
     submission = Submission.objects.filter(assignment=assignment, student=student).first()
 
-    # 如果没有提交记录，则为该学生创建一个默认的0分记录
     if not submission:
-        # 创建一个提交记录对象
         submission = Submission(student=student, assignment=assignment)
         submission.save()
-
-        # 创建一个默认的0分评分记录
         score = Scores(student=student, assignment=assignment, score=0, submission=submission)
         score.save()
     else:
-        # 如果已有提交记录，则获取或创建评分记录
-        score, created = Scores.objects.get_or_create(student=submission.student, assignment=submission.assignment)
 
-        # 如果该学生已有成绩但没有提交，则创建一个默认评分
-        if not score.submission:
-            score.submission = submission
-            score.save()
+        score, _= Scores.objects.get_or_create(student=submission.student, assignment=submission.assignment)
 
-    # 处理评分表单提交
     if request.method == 'POST':
         form = ScoreForm(request.POST, instance=score)
         if form.is_valid():
-            # 如果评分为空，设置为0
-            if not form.cleaned_data['score']:
+            print(form.cleaned_data['score'])
+            if not form.cleaned_data['score'] or score.score <= 0 or score.score>100:
+                message="成绩不能为空，且必须大于0不超过100"
+                return render(request, 'grade_submission.html', {
+            'form': form,
+            'submission': submission,
+            'message': message})
+            
+            else:
                 form.cleaned_data['score'] = 0
-            form.save()
-            return redirect('view_submissions', assignment_id=submission.assignment.id)
+                form.save()
+                return redirect('view_submissions', assignment_id=submission.assignment.id)
     else:
         form = ScoreForm(instance=score)
 
@@ -241,64 +479,63 @@ def grade_submission(request, assignment_id, student_id):
         'submission': submission
     })
 
-def export_scores(request):#导出成绩
 
-    assignment_id = request.GET.get('assignment', 'all')
 
-    all_students = CustomUser.objects.filter(is_teacher=False)
+def export_scores(request): 
+    assignment_ids = request.GET.getlist('assignment')  
 
-    if assignment_id == 'all':
-        assignments = Assignment.objects.all()  
+    all_students = CustomUser.objects.filter(is_teacher=False,is_superuser=False)
+
+    if 'all' in assignment_ids or not assignment_ids:  
+        assignments = Assignment.objects.all()
     else:
-        
-        assignments = Assignment.objects.filter(id=assignment_id)
-    
-    file_name = "总成绩"
-    if assignment_id != 'all':
-        assignment = assignments.first()  
-        file_name = f"{assignment.title}_成绩"
+        assignments = Assignment.objects.filter(id__in=assignment_ids)
 
-    encoded_file_name = urllib.parse.quote(file_name)
+    file_name = "总成绩"
+    if assignments.count() == 1:
+        file_name = f"{assignments.first().title}_成绩"
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{encoded_file_name}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="{file_name}.csv"'
 
-    writer = csv.writer(response)
+    response.write('\ufeff')  # 防止中文乱码
+    writer = csv.writer(response, quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-    writer.writerow(['姓名', '作业', '成绩'])
+    # 修复报错点：直接遍历 assignments 对象获取 title
+    columns = ['学号', '姓名'] + [f"{a.title}" for a in assignments]
+    writer.writerow(columns)
 
-    for assignment in assignments:
-
-        for student in all_students:#遍历所有学生
-
-            score = Scores.objects.filter(student=student, assignment=assignment).first()
-
-
-            if not score:
-                score = Scores(student=student, assignment=assignment, score=0)
-                score.save()
-
-            writer.writerow([score.student.name, score.assignment.title, score.score])
+    for student in all_students:
+        row = [student.number, student.name]
+        for a in assignments: # 避免使用 assignment 变量名以防冲突
+            score = Scores.objects.filter(student=student, assignment=a).first()
+            submission_exists = Submission.objects.filter(student=student, assignment=a).exists()
+            if not submission_exists:
+                row.append("未提交")
+            else:
+                row.append(score.score if score else 0)
+        writer.writerow(row)
 
     return response
-
 
 #导出未提交
 def export_non_submitted(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    all_students = CustomUser.objects.filter(is_teacher=False)
+    
+    all_students = CustomUser.objects.filter(is_teacher=False,is_superuser=False)
     submitted_student_ids = Submission.objects.filter(assignment=assignment).values_list('student_id', flat=True)
     non_submitted_students = all_students.exclude(id__in=submitted_student_ids)
-    response = HttpResponse(content_type='text/plain')
-    response['Content-Disposition'] = f'attachment; filename="non_submitted_{assignment.title}.txt"'
-    if non_submitted_students.exists():
-        response.write(f"以下学生未提交作业:\n{assignment.title}:\n")
-        for student in non_submitted_students:
-            response.write(f"{student.name}\n")
-    else:
-        response.write("所有学生已提交。\n")
     
-    return response
+    # 生成未提交作业学生名单文本
+    student_list = "以下学生未提交作业:\n"
+    if non_submitted_students.exists():
+        for student in non_submitted_students:
+            student_list += f"{student.name}  {student.number}  {assignment.title}\n"
+    else:
+        student_list = "所有学生已提交。\n"
+    
+    return JsonResponse({'student_list': student_list})
+
 #修改密码
 @user_passes_test(is_teacher)
 def change_password(request):
@@ -328,7 +565,11 @@ def change_password(request):
 
 
 
-##########################################################学生操作##############################################################
+##########################################################################################学生操作##############################################################
+
+
+
+
 def verify_code(request):
     if request.method == 'POST':
         entered_code = request.POST.get('code')
@@ -381,7 +622,7 @@ def forgot_password(request):#找回密码
         request.session['verification_code'] = verification_code
         request.session['email'] = email
 
-        return redirect('verify_code')  # 重定向到验证码验证页面
+        return redirect('verify_code')  
 
     return render(request, 'forgot_password.html')
 @login_required
@@ -413,54 +654,134 @@ def check_grade(request):
     if not request.user.is_authenticated:
         return redirect('custom_login')
 
-    student = request.user  # 当前登录的学生
-
-    # 获取学生的所有成绩
+    student = request.user 
     scores = Scores.objects.filter(student=student)
-
-    # 获取所有作业
     assignments = Assignment.objects.all()
-
+    submissions = Submission.objects.filter(
+        student=request.user, 
+        assignment=OuterRef('pk')
+    )
+    assignments = assignments.annotate(has_submission=Exists(submissions))
     # 将成绩和作业组合成一个字典，直接在后端处理
     assignment_scores = {}
     for assignment in assignments:
         score = scores.filter(assignment=assignment).first()  # 获取每个作业的成绩
         assignment_scores[assignment] = score  # 将作业和成绩存储为字典
-
+    # for assignment, score in assignment_scores.items():
+    #     print(assignment.title, score)
     return render(request, 'check_grade.html', {
-        'assignment_scores': assignment_scores  # 将成绩字典传递给模板
+        'assignment_scores': assignment_scores,
+         'assignments': assignments
     })
 
 
 
 
+
+
 def assignment_list(request):
+    now = timezone.now()
+    filter_type = request.GET.get('filter', 'all')  # 获取URL中的filter参数，默认值为'all'
+
+ 
     assignments = Assignment.objects.all()
-    return render(request, 'assignment_list.html', {'assignments': assignments})
+
+  
+    submissions = Submission.objects.filter(
+        student=request.user, 
+        assignment=OuterRef('pk')
+    )
+    assignments = assignments.annotate(has_submission=Exists(submissions))
+
+    if filter_type == 'not_submitted':
+ 
+        assignments = assignments.filter(has_submission=False)
+    elif filter_type == 'all':
+ 
+        assignments = assignments.all()
+
+    return render(request, 'assignment_list.html', {
+        'assignments': assignments,
+        'now': now,
+        'filter': filter_type,  
+    })
+
 
 # 学生提交作业@login_required
+# 学生提交作业视图
+# 1. 学生提交：实现文件夹归类与规范命名
 @login_required
 def student_submission(request, assignment_id):
-# 截止日期是否已过
-    assignment = Assignment.objects.get(id=assignment_id)
+    # 1. 获取作业对象和学生对象
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    student = request.user
+    
+    # 2. 截止日期检查
     if timezone.now() > assignment.due_date:
         return render(request, 'student_submission.html', {
-            'assignment': assignment,
-            'error_message': '作业提交已过截止日期，无法提交！'
+            'assignment': assignment, 
+            'error_message': '作业已截止，无法提交！'
         })
-    student = request.user
-    submission, created = Submission.objects.get_or_create(student=student, assignment=assignment)
+
+    # 3. 获取或创建提交记录
+    submission, _ = Submission.objects.get_or_create(student=student, assignment=assignment)
 
     if request.method == 'POST':
-        form = SubmissionForm(request.POST, request.FILES, instance=submission)
-        if form.is_valid():
-            form.save()
-            return render(request, 'student_submission.html', {
-            'assignment': assignment,
-            'error_message': '作业已成功提交！'
-        }) # 提交后返回作业列表
-    else:
-        form = SubmissionForm(instance=submission)
+        # 初始化数据字典
+        old_answers = submission.custom_answers or {}
+        new_answers = {}
+        custom_fields = assignment.custom_fields or []
+        
+        for field in custom_fields:
+            field_name = field['name']
+            form_key = f"custom_{field_name}"
+            
+            if field['type'] == 'file':
+                uploaded_file = request.FILES.get(form_key)
+                if uploaded_file:
+                    # 4. 规范化命名：姓名_学号.后缀
+                    ext = os.path.splitext(uploaded_file.name)[1].lower()
+                    filename = f"{student.name}_{student.username}{ext}"
+                    
+                    # 5. 构建物理路径：media/submissions/作业标题/姓名_学号.后缀
+                    # 使用 os.path.join 确保跨平台路径正确
+                    relative_dir = os.path.join('submissions', assignment.title)
+                    relative_path = os.path.join(relative_dir, filename)
+                    full_path = os.path.join(settings.MEDIA_ROOT, relative_path)
 
-    return render(request, 'student_submission.html', {'form': form, 'assignment': assignment})
+                    # 6. 核心修复：强制覆盖逻辑
+                    # 如果物理文件已存在，直接删除，防止 Django 自动在文件名后加随机字符
+                    if os.path.exists(full_path):
+                        os.remove(full_path)
+                    
+                    # 7. 确保作业文件夹存在
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                    
+                    # 8. 直接写入文件内容
+                    with open(full_path, 'wb+') as destination:
+                        for chunk in uploaded_file.chunks():
+                            destination.write(chunk)
+                    
+                    # 9. 数据库存入统一的相对路径，斜杠统一为正斜杠
+                    new_answers[field_name] = relative_path.replace('\\', '/')
+                else:
+                    # 如果没有上传新文件，保留旧路径
+                    new_answers[field_name] = old_answers.get(field_name)
+            else:
+                # 处理文本、数字等普通字段
+                new_answers[field_name] = request.POST.get(form_key)
+
+        # 10. 保存动态内容到数据库
+        submission.custom_answers = new_answers
+        submission.save()
+        
+        # 11. 确保成绩记录存在
+        Scores.objects.get_or_create(student=student, assignment=assignment, defaults={'score': 0})
+        
+        return render(request, 'student_submission.html', {
+            'assignment': assignment, 
+            'error_message': '提交成功！'
+        })
+
+    return render(request, 'student_submission.html', {'assignment': assignment})
 

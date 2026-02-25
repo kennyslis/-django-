@@ -1,0 +1,258 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block admin_content %}
+<div class="admin-main-wrapper">
+    <header class="glass-nav">
+        <div class="nav-left">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h1>用户管理中心</h1>
+                <p>账户权限与系统安全维护 (点击学号或邮箱可直接修改，Enter键确认保存)</p>
+            </div>
+        </div>
+        
+        <div class="nav-right-unified">
+            <button type="button" onclick="confirmBatchDelete()" class="btn-danger-pill-small">🗑️ 批量删除</button>
+            
+            <form method="get" class="search-filter-pill">
+                <div class="pill-group">
+                    <select name="role" class="pill-select" onchange="this.form.submit()">
+                        <option value="all" {% if role == 'all' %}selected{% endif %}>所有角色</option>
+                        <option value="teacher" {% if role == 'teacher' %}selected{% endif %}>仅老师</option>
+                        <option value="student" {% if role == 'student' %}selected{% endif %}>仅学生</option>
+                    </select>
+                    <div class="v-divider"></div>
+                    <input type="text" name="search" value="{{ query }}" placeholder="搜索姓名/账号..." class="pill-input">
+                    <button type="submit" class="pill-btn">🔍</button>
+                </div>
+            </form>
+        </div>
+    </header>
+
+    <div class="data-container">
+        <form id="batch-delete-form" method="post" action="{% url 'batch_delete_users' %}">
+            {% csrf_token %}
+            <input type="hidden" name="search" value="{{ query }}">
+            <input type="hidden" name="role" value="{{ role }}">
+
+            <table class="apple-table">
+                <thead>
+                    <tr>
+                        <th class="col-cb"><input type="checkbox" id="master-cb" onclick="toggleSelectAll(this)"></th>
+                        <th style="width: 180px;">学号 / 账号 (点击修改)</th>
+                        <th>姓名</th>
+                        <th>电子邮箱 (点击修改)</th>
+                        <th>账户权限</th>
+                        <th class="col-pwd">账户密码 (点击修改)</th>
+                        <th>加入时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td class="col-cb">
+                            {% if not u.is_superuser %}
+                                <input type="checkbox" name="selected_users" value="{{ u.id }}" class="user-checkbox">
+                            {% else %}
+                                <span class="lock-icon">🔒</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="editable-cell-inline">
+                            <span class="cell-display font-mono" onclick="initCellEdit(this, {{ u.id }}, 'number')">{{ u.number|default:"None" }}</span>
+                            <input type="text" class="cell-editor" style="display:none;" 
+                                   onkeydown="if(event.keyCode==13) commitCellUpdate({{ u.id }}, this, 'number')">
+                        </td>
+
+                        <td class="font-bold">{{ u.name }}</td>
+
+                        <td class="editable-cell-inline">
+                            <span class="cell-display" onclick="initCellEdit(this, {{ u.id }}, 'email')">{{ u.email|default:"未设置" }}</span>
+                            <input type="email" class="cell-editor" style="display:none;" 
+                                   onkeydown="if(event.keyCode==13) commitCellUpdate({{ u.id }}, this, 'email')">
+                        </td>
+
+                        <td>
+                            {% if u.is_superuser %}
+                                <span class="tag tag-admin">超级管理员</span>
+                            {% elif u.is_teacher %}
+                                <span class="tag tag-teacher">教师权限</span>
+                            {% else %}
+                                <span class="tag tag-student">学生账户</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="editable-cell">
+                            <div class="pwd-mask" onclick="initPwdEdit(this)">******</div>
+                            <input type="password" class="pwd-editor" style="display:none;" 
+                                   placeholder="回车确认"
+                                   onkeydown="if(event.keyCode==13) commitPwdChange({{ u.id }}, this, '{{ u.name }}')">
+                        </td>
+
+                        <td class="text-muted">{{ u.date_joined|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="empty-state">未搜索到相关用户记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
+</div>
+
+<style>
+/* 保持您原有的核心美化样式 */
+:root {
+    --accent: #007aff;
+    --danger: #ff3b30;
+    --card: #ffffff;
+    --border: #e5e5ea;
+    --text: #1d1d1f;
+    --text-sec: #86868b;
+}
+
+.admin-main-wrapper { width: 98%; max-width: 1750px; margin: 20px auto; animation: fadeIn 0.4s ease; }
+
+.glass-nav { 
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(15px);
+    padding: 15px 35px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    border: 1px solid var(--border);
+}
+
+.nav-right-unified { display: flex; align-items: center; gap: 15px; }
+
+.search-filter-pill { margin: 0; }
+.pill-group { 
+    background: #fff; border: 1px solid var(--border); border-radius: 12px; 
+    display: flex; align-items: center; padding: 2px 10px;
+}
+.pill-select, .pill-input { border: none; outline: none; padding: 8px; font-size: 13px; color: var(--text); }
+.v-divider { width: 1px; height: 18px; background: var(--border); margin: 0 5px; }
+.pill-btn { background: none; border: none; cursor: pointer; font-size: 14px; }
+
+.btn-danger-pill-small { 
+    background: var(--danger); color: white; border: none; padding: 8px 16px; 
+    border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s;
+}
+
+.data-container { background: var(--card); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid var(--border); }
+.apple-table { width: 100%; border-collapse: collapse; }
+.apple-table th { 
+    background: #fbfbfd; padding: 15px 20px; text-align: left; font-size: 13px; 
+    color: var(--text-sec); border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+.apple-table td { padding: 15px 20px; border-bottom: 1px solid #f2f2f7; border-right: 1px solid #f2f2f7; vertical-align: middle; }
+.apple-table th:last-child, .apple-table td:last-child { border-right: none; }
+
+.apple-table tbody tr:nth-child(even) { background-color: #fafafc; }
+.apple-table tbody tr:hover { background-color: #f2f2f7; }
+
+/* 行内编辑专用样式 */
+.cell-display { color: var(--accent); font-weight: 800; padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.cell-display:hover { background: #e8f2ff; }
+.cell-editor { 
+    width: 90%; padding: 6px; border: 2px solid var(--accent); 
+    border-radius: 8px; text-align: center; font-size: 13px; outline: none;
+}
+
+.pwd-mask { color: var(--accent); font-weight: 800; cursor: pointer; padding: 4px; border-radius: 6px; }
+.pwd-mask:hover { background: #e8f2ff; }
+.pwd-editor { width: 85%; padding: 6px; border: 2px solid var(--accent); border-radius: 8px; text-align: center; font-size: 13px; }
+
+.tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+.tag-admin { background: #fff2f2; color: var(--danger); }
+.tag-teacher { background: #f0f7ff; color: var(--accent); }
+.tag-student { background: #f2fcf5; color: #34c759; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+
+<script>
+// 1. 基础功能：全选与批量删除
+function toggleSelectAll(m) {
+    document.querySelectorAll('.user-checkbox').forEach(c => c.checked = m.checked);
+}
+
+function confirmBatchDelete() {
+    const sel = document.querySelectorAll('.user-checkbox:checked').length;
+    if(sel === 0) return alert("请先勾选账户");
+    if(confirm(`确定删除选中的 ${sel} 个账户吗？`)) {
+        document.getElementById('batch-delete-form').submit();
+    }
+}
+
+// 2. 改密逻辑
+function initPwdEdit(div) {
+    const input = div.parentElement.querySelector('.pwd-editor');
+    div.style.display = 'none';
+    input.style.display = 'inline-block';
+    input.focus();
+    input.onblur = function() {
+        this.style.display = 'none';
+        div.style.display = 'block';
+        this.value = "";
+    };
+}
+
+function commitPwdChange(uid, input, name) {
+    const val = input.value;
+    if(!val) return alert("请输入新密码");
+    if(confirm(`⚠️ 安全确认\n\n确定重置「${name}」的密码吗？`)) {
+        performQuickUpdate(uid, 'password', val, input);
+    }
+}
+
+// 3. 行内编辑初始化 (学号/邮箱)
+function initCellEdit(span, uid, field) {
+    const input = span.parentElement.querySelector('.cell-editor');
+    span.style.display = 'none';
+    input.style.display = 'inline-block';
+    input.value = (span.innerText === "None" || span.innerText === "未设置") ? "" : span.innerText;
+    input.focus();
+    input.onblur = function() {
+        this.style.display = 'none';
+        span.style.display = 'inline-block';
+    };
+}
+
+function commitCellUpdate(uid, input, field) {
+    const newVal = input.value.trim();
+    if(!newVal) return alert("字段不能为空");
+    performQuickUpdate(uid, field, newVal, input);
+}
+
+// 4. 统一的 AJAX 更新函数 (处理报错弹窗)
+function performQuickUpdate(uid, field, value, inputElement) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('user_id', uid);
+    fd.append('field', field);
+    fd.append('value', value);
+
+    // 调用后端统一更新接口
+    fetch("{% url 'admin_user_quick_update' %}", { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+        if(data.status === 'success') {
+            if(field === 'password') {
+                alert("✅ 密码重置成功");
+            } else {
+                const span = inputElement.parentElement.querySelector('.cell-display');
+                span.innerText = value;
+                // 成功绿色反馈
+                span.style.color = '#34c759';
+                setTimeout(() => { span.style.color = ''; }, 2000);
+            }
+            inputElement.blur();
+        } else {
+            // 唯一性冲突或其他报错弹窗
+            alert("❌ 操作失败\n\n原因：" + data.message);
+            inputElement.focus(); 
+        }
+    })
+    .catch(err => alert("网络请求出错，请检查接口配置"));
+}
+</script>
+{% endblock %}
