@@ -1,4 +1,9 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/change_pass.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="fixed-centered-wrapper">
@@ -44,83 +49,7 @@
     </div>
 </div>
 
-<style>
-/* 核心修复：完全适配侧边栏，防止错位 */
-.fixed-centered-wrapper {
-    padding: 40px;
-    max-width: 1200px;
-    margin: 0 auto; /* 保证在主内容区居中 */
-    animation: fadeIn 0.5s ease;
-}
 
-/* 顶部导航 */
-.minimal-header {
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #e5e5ea;
-}
-.header-content { display: flex; align-items: center; gap: 20px; }
-.lock-icon { font-size: 30px; background: #f2f2f7; padding: 12px; border-radius: 12px; }
-.header-content h1 { font-size: 24px; color: #1d1d1f; margin: 0; }
-.header-content p { font-size: 13px; color: #86868b; margin-top: 5px; }
-
-/* 苹果风卡片设计 */
-.auth-card-apple {
-    background: #ffffff;
-    max-width: 500px;
-    margin: 0 auto; /* 核心：在 content 区域内部居中 */
-    padding: 50px;
-    border-radius: 28px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.06);
-    border: 1px solid #e5e5ea;
-}
-
-.form-row { margin-bottom: 25px; }
-.form-row label { display: block; font-size: 13px; font-weight: 700; color: #1d1d1f; margin-bottom: 10px; }
-
-.apple-input {
-    width: 100%;
-    padding: 14px 18px;
-    border-radius: 12px;
-    border: 1px solid #d1d1d6;
-    background: #fbfbfd;
-    font-size: 16px;
-    outline: none;
-    transition: 0.2s;
-    box-sizing: border-box;
-}
-.apple-input:focus { border-color: #007aff; background: #fff; box-shadow: 0 0 0 4px rgba(0,122,255,0.1); }
-
-/* 按钮设计 */
-.apple-btn-blue {
-    width: 100%;
-    padding: 16px;
-    background: #007aff;
-    color: white;
-    border: none;
-    border-radius: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.3s;
-}
-.apple-btn-blue:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,122,255,0.3); }
-
-/* 状态反馈 */
-.toast-feedback {
-    margin-top: 25px;
-    padding: 12px;
-    border-radius: 10px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    display: none;
-}
-.toast-success { background: #e2fbe8; color: #34c759; }
-.toast-error { background: #fff2f2; color: #ff3b30; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-</style>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>

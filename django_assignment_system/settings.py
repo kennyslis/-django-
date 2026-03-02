@@ -32,7 +32,7 @@ EMAIL_HOST_USER = '2819024054@qq.com'  # 用您的 QQ 邮箱地址替换
 EMAIL_HOST_PASSWORD = 'vhvlhdtkmvvzdfib'  # 用您在 QQ 邮箱生成的授权码替换
 DEFAULT_FROM_EMAIL = '2819024054@qq.com'
 ALLOWED_HOSTS = ['76187om0zn74.vicp.fun','127.0.0.1','546349b3.r19.cpolar.top','1f0976b.r19.cpolar.top','648ade77.r19.cpolar.top','6871088d.r19.cpolar.top']
-
+ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     'https://76187om0zn74.vicp.fun',
     'http://42156878.r19.cpolar.top',
@@ -141,3 +141,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# 允许所有主机访问（开发环境）
+
+
+# 修改 Redis 地址为 docker-compose 中定义的镜像名 'redis'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'

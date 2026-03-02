@@ -1,9 +1,8 @@
 import os
 import django
-from django.conf import settings
 
 # 设置 Django 环境变量
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "assignment_system.settings")  # 替换为你的项目设置模块
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_assignment_system.settings")
 django.setup()
 
 from assignment_system.models import CustomUser  # 替换为你的应用名
