@@ -90,11 +90,9 @@ docker-compose exec web python manage.py migrate
 ```
 
 
-4. **访问系统**：浏览器打开 `http://localhost:8000`。
+
 
 ---
 
 
 
-**下一步建议：**
-你现在可以按照 README 里的模块进行截图了。**需要我教你如何把这些截图合并成一张“长图”放在 GitHub 仓库的 `assets` 文件夹里吗？**
