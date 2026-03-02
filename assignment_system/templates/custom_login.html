@@ -1,292 +1,96 @@
-﻿<!DOCTYPE html>
-<html lang="zh-CN">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>作业管理系统 | 登录</title>
+    <title>作业管理系统</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-  <!-- 企业后台风：极简商务（无外部依赖） -->
-  <style>
-    :root{
-      --bg: #f6f8fb;
-      --card: #ffffff;
-      --text: #0f172a;          /* slate-900 */
-      --muted: #64748b;         /* slate-500 */
-      --line: #e2e8f0;          /* slate-200 */
-      --primary: #2563eb;       /* blue-600 */
-      --primary-700: #1d4ed8;   /* blue-700 */
-      --danger: #dc2626;        /* red-600 */
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.10);
-      --radius: 16px;
-    }
+        /* 登录框 */
+        .login-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 320px;
+        }
 
-    *{ box-sizing: border-box; }
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-                   Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      color: var(--text);
-      background: var(--bg);
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
+        /* 标题 */
+        .login-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
 
-    /* 整体布局：左品牌区 + 右登录卡 */
-    .shell{
-      width: min(980px, 100%);
-      display: grid;
-      grid-template-columns: 1.2fr 0.9fr;
-      gap: 18px;
-      align-items: stretch;
-    }
+        /* 输入框 */
+        .login-container input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
 
-    .brand{
-      position: relative;
-      border-radius: var(--radius);
-      background: radial-gradient(1200px 600px at 10% 20%, rgba(37,99,235,.18), transparent 60%),
-                  radial-gradient(900px 500px at 60% 10%, rgba(2,132,199,.10), transparent 55%),
-                  linear-gradient(180deg, #ffffff, #f3f6ff);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      padding: 36px 34px;
-      overflow: hidden;
-    }
+        /* 登录按钮 */
+        .login-container button {
+            width: 97%;
+            padding: 10px;
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
 
-    .brand .badge{
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.65);
-      border-radius: 999px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+        .login-container button:hover {
+            background-color: #0056b3;
+        }
 
-    .brand h1{
-      margin: 18px 0 10px;
-      font-size: 28px;
-      letter-spacing: .2px;
-    }
+        /* 注册提示 */
+        .register-link {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #333;
+        }
 
-    .brand p{
-      margin: 0 0 18px;
-      color: var(--muted);
-      line-height: 1.7;
-      max-width: 52ch;
-      font-size: 14px;
-    }
+        .register-link a {
+            color: #007BFF;
+            text-decoration: none;
+        }
 
-    .brand .points{
-      margin-top: 18px;
-      display: grid;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .point{
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(255,255,255,.6);
-    }
-    .dot{
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      margin-top: 4px;
-      background: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
-      flex: none;
-    }
-
-    .login-card{
-      border-radius: var(--radius);
-      background: var(--card);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      padding: 32px 28px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .login-card h2{
-      margin: 0 0 6px;
-      font-size: 20px;
-      letter-spacing: .2px;
-    }
-
-    .login-card .sub{
-      margin: 0 0 18px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .field{
-      display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    label{
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    input{
-      width: 100%;
-      padding: 12px 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      font-size: 14px;
-      outline: none;
-      transition: border-color .15s, box-shadow .15s, background .15s;
-      background: #fff;
-      color: var(--text);
-    }
-
-    input::placeholder{ color: #94a3b8; } /* slate-400 */
-    input:focus{
-      border-color: rgba(37,99,235,.55);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
-      background: #fff;
-    }
-
-    .actions{
-      margin-top: 10px;
-      display: grid;
-      gap: 10px;
-    }
-
-    button{
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(37,99,235,.25);
-      background: var(--primary);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform .12s ease, background .15s ease, box-shadow .15s ease;
-      box-shadow: 0 8px 18px rgba(37,99,235,.18);
-    }
-    button:hover{
-      background: var(--primary-700);
-      box-shadow: 0 10px 22px rgba(37,99,235,.22);
-    }
-    button:active{ transform: translateY(1px); }
-
-    .links{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      font-size: 13px;
-    }
-    .links a{
-      color: var(--primary);
-      text-decoration: none;
-    }
-    .links a:hover{ text-decoration: underline; }
-
-    .error-message{
-      margin-top: 14px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(220,38,38,.22);
-      background: rgba(220,38,38,.06);
-      color: var(--danger);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .footer{
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    /* 响应式：移动端堆叠 */
-    @media (max-width: 860px){
-      .shell{ grid-template-columns: 1fr; }
-      .brand{ padding: 28px 22px; }
-      .login-card{ padding: 28px 22px; }
-    }
-
-    /* 无障碍：减少动画时保持静态 */
-    @media (prefers-reduced-motion: reduce){
-      *{ transition: none !important; }
-      button:active{ transform: none; }
-    }
-  </style>
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-
 <body>
-  <main class="shell" role="main">
-    <section class="brand" aria-label="系统简介">
-      <div class="badge">
-        <span style="font-weight:600;color:var(--text);">作业管理系统</span>
-        <span>•</span>
-        <span>统一入口</span>
-      </div>
-
-      <h1>欢迎回来</h1>
-      <p>请使用您的账号登录系统。登录后可进行作业发布、提交管理、批改统计与数据导出等操作。</p>
-
-      <div class="points">
-        <div class="point"><span class="dot"></span><span>简洁清晰的后台布局，减少干扰，专注任务</span></div>
-        <div class="point"><span class="dot"></span><span>支持常见浏览器与移动端自适应</span></div>
-        <div class="point"><span class="dot"></span><span>安全会话与权限控制（由后端统一管理）</span></div>
-      </div>
-    </section>
-
-    <section class="login-card" aria-label="登录表单">
-      <h2>登录</h2>
-      <p class="sub">请输入账号与密码继续。</p>
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-
-        <div class="field">
-          <label for="username">账号</label>
-          <input type="text" name="username" id="username" placeholder="请输入账号" autocomplete="username" required>
-        </div>
-
-        <div class="field">
-          <label for="password">密码</label>
-          <input type="password" name="password" id="password" placeholder="请输入密码" autocomplete="current-password" required>
-        </div>
-
-        <div class="actions">
-          <button type="submit">登录</button>
-        </div>
-
-        <div class="links">
-          <!-- 如果之后要放注册入口，可取消注释 -->
-          <!-- <a href="{% url 'register' %}">注册账号</a> -->
-          <span></span>
-          <a href="{% url 'forgot_password' %}">忘记密码</a>
-        </div>
+    <div class="login-container">
+        <h2>🔑 用户登录</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="username" id="username" placeholder="账号" required>
+            <input type="password" name="password" id="password" placeholder="密码" required>
+            <button type="submit">登录</button>
+        </form>
+        {#<p class="register-link">没有账户? <a href="{% url 'register' %}">注册</a> |#}  <a href="{% url 'forgot_password' %}">忘记密码</a></p>
 
         {% if error_message %}
-          <div class="error-message" role="alert">
-            {{ error_message }}
-          </div>
-        {% endif %}
-
-        <div class="footer">© 作业管理系统</div>
-      </form>
-    </section>
-  </main>
+    <div class="error-message">
+        <p style="color: red; font-weight: bold;">{{ error_message }}</p>
+    </div>
+    {% endif %}
+    </div>
+   
 </body>
 </html>
