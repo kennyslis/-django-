@@ -74,7 +74,7 @@
                                     {% if ".doc" in value or ".pdf" in value or ".ipynb" in value or ".zip" in value %}
                                         <div class="file-card">
                                             {% if ".ipynb" in value %}
-                                                <a href="{% url 'view_ipynb' student.sub_id %}" target="_blank" class="preview-btn">在线预览</a>
+                                                <a href="{% url 'view_ipynb' student.sub_id %}" class="preview-btn js-inline-preview" data-preview-url="{% url 'view_ipynb' student.sub_id %}">在线预览</a>
                                             {% endif %}
                                             <a href="/media/{{ value }}" target="_blank" class="download-icon" title="下载附件">💾</a>
                                         </div>
@@ -114,6 +114,16 @@
                 <button onclick="closeBatchModal()" class="btn-text">取消</button>
                 <button onclick="handleBatchSubmit()" class="btn-gradient">确认并同步</button>
             </div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="preview-modal" onclick="closePreviewModal(event)">
+        <div class="preview-modal-panel" onclick="event.stopPropagation()">
+            <div class="preview-modal-header">
+                <strong>作业在线预览</strong>
+                <button type="button" class="preview-close-btn" onclick="closePreviewModal()">✕</button>
+            </div>
+            <iframe id="previewFrame" class="preview-frame" src="" title="作业在线预览"></iframe>
         </div>
     </div>
 </div>
@@ -295,6 +305,51 @@
     from { opacity: 0; transform: scale(0.9) translateY(20px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+.preview-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 2vh 2vw;
+}
+
+.preview-modal-panel {
+    width: min(1600px, 96vw);
+    height: min(900px, 94vh);
+    background: #111827;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.preview-modal-header {
+    height: 48px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #e5e7eb;
+    background: #030712;
+}
+
+.preview-close-btn {
+    border: none;
+    background: transparent;
+    color: #e5e7eb;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.preview-frame {
+    width: 100%;
+    height: calc(100% - 48px);
+    border: none;
+    background: #fff;
+}
 </style>
 
 <script>
@@ -362,5 +417,33 @@ function handleBatchSubmit() {
     fetch("{% url 'batch_grade' assignment.id %}", { method: 'POST', body: fd })
     .then(r => r.json()).then(data => { if(data.status==='success') location.reload(); });
 }
+
+function openPreviewModal(url) {
+    const modal = document.getElementById('previewModal');
+    const frame = document.getElementById('previewFrame');
+    frame.src = url;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePreviewModal(event) {
+    if (event && event.target && event.target.id !== 'previewModal') return;
+    const modal = document.getElementById('previewModal');
+    const frame = document.getElementById('previewFrame');
+    modal.style.display = 'none';
+    frame.src = '';
+    document.body.style.overflow = '';
+}
+
+document.querySelectorAll('.js-inline-preview').forEach(link => {
+    link.addEventListener('click', function (event) {
+        event.preventDefault();
+        openPreviewModal(this.dataset.previewUrl || this.href);
+    });
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') closePreviewModal();
+});
 </script>
 {% endblock %}

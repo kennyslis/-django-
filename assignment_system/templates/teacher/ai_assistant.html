@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="chat-page">
+  <div class="chat-shell">
+
+    <div class="chat-top">
+      <div class="chat-top-left">
+        <div>
+          <div class="chat-title">AI 学情小助手</div>
+          <div class="chat-subtitle">可问：谁成绩最好？哪个作业最难？</div>
+        </div>
+      </div>
+      <div class="chat-top-right">
+        <span class="pill">已接入数据库</span>
+      </div>
+    </div>
+
+    <div id="chat" class="chat-body">
+      <div class="msg bot">
+        <div class="bubble-wrap">
+          <div class="bubble">
+            你好～我已接入系统数据库（作业 / 提交 / 成绩）。你可以直接问：<br><br>
+            <div class="quick">
+              <button class="quick-btn" data-q="谁成绩最好？">谁成绩最好？</button>
+              <button class="quick-btn" data-q="哪个作业最难？">哪个作业最难？</button>
+              <button class="quick-btn" data-q="谁交作业最多？">谁交作业最多？</button>
+              <button class="quick-btn" data-q="第1次作业谁没交？">第1次作业谁没交？</button>
+            </div>
+          </div>
+          <div class="meta">AI · <span class="time"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-composer">
+      <div class="composer-inner">
+        <textarea id="inp" rows="1" placeholder="输入你的问题…（Enter 发送，Shift+Enter 换行）"></textarea>
+        <button id="send" class="send-btn" title="发送">
+          <span id="sendIcon">发送</span>
+          <span id="sendSpin" class="spin" style="display:none;">处理中…</span>
+        </button>
+      </div>
+      <div class="hint">提示：问“谁成绩最好”会出表格；问“哪个作业最难”会出柱状图</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ✅ ECharts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+<script>
+function nowTime(){
+  const d = new Date();
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function escapeHtml(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function formatText(text){
+  const safe = escapeHtml(text || "");
+  const parts = safe.split("```");
+  if (parts.length === 1) return safe.replaceAll("\n","<br>");
+  let out = "";
+  for (let i=0;i<parts.length;i++){
+    if (i % 2 === 0) out += parts[i].replaceAll("\n","<br>");
+    else out += `<pre class="code"><code>${parts[i]}</code></pre>`;
+  }
+  return out;
+}
+
+let chartSeq = 0;
+
+function renderTable(table){
+  const cols = table.columns || [];
+  const rows = table.rows || [];
+  let thead = cols.map(c=>`<th>${escapeHtml(String(c))}</th>`).join("");
+  let tbody = rows.map(r=>{
+    const tds = (r||[]).map(x=>`<td>${escapeHtml(String(x))}</td>`).join("");
+    return `<tr>${tds}</tr>`;
+  }).join("");
+  return `
+    <div class="rich-block">
+      <table class="ai-table">
+        <thead><tr>${thead}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderChart(chart){
+  chartSeq += 1;
+  const id = "aiChart_" + chartSeq;
+  // 容器先占位，稍后 init
+  return { html: `<div class="rich-block"><div id="${id}" class="ai-chart"></div></div>`, id };
+}
+
+function appendMsg(role, text, rich){
+  const chat = document.getElementById("chat");
+  const wrap = document.createElement("div");
+  wrap.className = "msg " + (role === "user" ? "me" : "bot");
+
+  let richHtml = "";
+  let chartToInit = null;
+
+  if (rich && rich.table){
+    richHtml += renderTable(rich.table);
+  }
+  if (rich && rich.chart){
+    const tmp = renderChart(rich.chart);
+    richHtml += tmp.html;
+    chartToInit = { id: tmp.id, chart: rich.chart };
+  }
+
+  wrap.innerHTML = `
+    <div class="bubble-wrap">
+      <div class="bubble">${formatText(text)}</div>
+      ${richHtml}
+      <div class="meta">${role === "user" ? "你" : "AI"} · <span class="time">${nowTime()}</span></div>
+    </div>
+  `;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  // init echarts (after dom inserted)
+  if (chartToInit){
+    const el = document.getElementById(chartToInit.id);
+    const c = echarts.init(el);
+    const opt = {
+      title: { text: chartToInit.chart.title || "" },
+      tooltip: { trigger: "axis" },
+      grid: { left: 50, right: 20, top: 50, bottom: 70 },
+      xAxis: {
+        type: "category",
+        data: chartToInit.chart.x || [],
+        axisLabel: { rotate: 25 }
+      },
+      yAxis: { type: "value", name: chartToInit.chart.y_name || "" },
+      series: [{
+        type: "bar",
+        data: chartToInit.chart.y || [],
+        barMaxWidth: 40,
+      }]
+    };
+    c.setOption(opt);
+    window.addEventListener("resize", ()=>c.resize());
+  }
+
+  return wrap;
+}
+
+function setTyping(on){
+  const btn = document.getElementById("send");
+  document.getElementById("sendIcon").style.display = on ? "none" : "inline";
+  document.getElementById("sendSpin").style.display = on ? "inline" : "none";
+  btn.disabled = on;
+  btn.classList.toggle("disabled", on);
+}
+
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return m ? decodeURIComponent(m[2]) : null;
+}
+function autosize(el){
+  el.style.height = "0px";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+
+async function send(textOverride){
+  const inp = document.getElementById("inp");
+  const text = (textOverride !== undefined ? textOverride : inp.value).trim();
+  if(!text) return;
+
+  appendMsg("user", text);
+  inp.value = "";
+  autosize(inp);
+
+  setTyping(true);
+
+  // placeholder
+  appendMsg("bot", "正在查询数据库并生成回答…");
+  const placeholderBubble = document.querySelector("#chat .msg.bot:last-child .bubble");
+
+  const csrftoken = getCookie("csrftoken");
+
+  try{
+    const res = await fetch("{% url 'ai_assistant_api' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken || ""
+      },
+      body: JSON.stringify({ prompt: text }),
+      credentials: "same-origin"
+    });
+
+    const data = await res.json();
+
+    // 替换 placeholder：最简单做法是直接改 bubble + 在其后追加 rich
+    const lastMsg = document.querySelector("#chat .msg.bot:last-child");
+    if (!res.ok){
+      placeholderBubble.innerHTML = formatText(data.message || data.error || "请求失败");
+    } else {
+      placeholderBubble.innerHTML = formatText(data.reply || "（没有返回）");
+      // 追加表格/图表
+      if (data.table || data.chart){
+        // 在 bubble-wrap 里 meta 前插入 rich html
+        const bubbleWrap = lastMsg.querySelector(".bubble-wrap");
+        const meta = bubbleWrap.querySelector(".meta");
+        let richHtml = "";
+        let chartToInit = null;
+
+        if (data.table){
+          richHtml += renderTable(data.table);
+        }
+        if (data.chart){
+          const tmp = renderChart(data.chart);
+          richHtml += tmp.html;
+          chartToInit = { id: tmp.id, chart: data.chart };
+        }
+
+        const tmpDiv = document.createElement("div");
+        tmpDiv.innerHTML = richHtml;
+        // 插到 meta 前
+        bubbleWrap.insertBefore(tmpDiv, meta);
+
+        if (chartToInit){
+          const el = document.getElementById(chartToInit.id);
+          const c = echarts.init(el);
+          c.setOption({
+            title: { text: chartToInit.chart.title || "" },
+            tooltip: { trigger: "axis" },
+            grid: { left: 50, right: 20, top: 50, bottom: 70 },
+            xAxis: { type: "category", data: chartToInit.chart.x || [], axisLabel: { rotate: 25 } },
+            yAxis: { type: "value", name: chartToInit.chart.y_name || "" },
+            series: [{ type: "bar", data: chartToInit.chart.y || [], barMaxWidth: 40 }]
+          });
+          window.addEventListener("resize", ()=>c.resize());
+        }
+      }
+    }
+  } catch (e){
+    placeholderBubble.innerHTML = formatText("请求失败：" + e);
+  } finally {
+    setTyping(false);
+  }
+}
+
+// init time
+document.querySelector(".msg.bot .time").textContent = nowTime();
+
+// quick buttons
+document.querySelectorAll(".quick-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>send(btn.dataset.q));
+});
+
+// send handlers
+document.getElementById("send").addEventListener("click", ()=>send());
+
+const inp = document.getElementById("inp");
+inp.addEventListener("input", ()=>autosize(inp));
+autosize(inp);
+
+inp.addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    send();
+  }
+});
+</script>
+
+<style>
+  :root{
+    --page:#ffffff;
+    --card:#ffffff;
+    --border:#e5e7eb;
+    --muted:#6b7280;
+    --text:#111827;
+    --soft:#f9fafb;
+    --bubble:#f3f4f6;
+    --me:#2563eb;
+    --meText:#ffffff;
+    --shadow: 0 10px 30px rgba(17,24,39,.06);
+  }
+  .chat-page{ width:100%; padding:18px 0 24px; background:var(--page); }
+  .chat-shell{ width:96%; max-width:1100px; margin:0 auto; border-radius:18px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); overflow:hidden;}
+  .chat-top{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:#fff; border-bottom:1px solid var(--border);}
+  .chat-title{ color:var(--text); font-weight:900; font-size:16px;}
+  .chat-subtitle{ color:var(--muted); font-size:12px; margin-top:2px;}
+  .pill{ display:inline-flex; align-items:center; padding:6px 10px; border-radius:999px; background:#ecfdf5; border:1px solid #bbf7d0; color:#065f46; font-size:12px; font-weight:800; white-space:nowrap;}
+  .chat-body{ height:62vh; min-height:520px; overflow:auto; padding:18px 16px 12px; background:var(--soft); }
+  .msg{ display:flex; margin:12px 0; }
+  .msg.bot{ justify-content:flex-start; }
+  .msg.me{ justify-content:flex-end; }
+  .bubble-wrap{ max-width:86%; }
+  .bubble{ padding:12px 13px; border-radius:14px; border:1px solid var(--border); background:var(--bubble); color:var(--text); line-height:1.6; font-size:14px; box-shadow:0 6px 16px rgba(17,24,39,.06);}
+  .msg.me .bubble{ background:var(--me); color:var(--meText); border-color:rgba(37,99,235,.25);}
+  .meta{ margin-top:6px; color:var(--muted); font-size:11px; padding-left:4px; }
+  .quick{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .quick-btn{ cursor:pointer; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:#fff; color:var(--text); font-size:12px; font-weight:800; }
+  .quick-btn:hover{ background:#f3f4f6; }
+  .chat-composer{ padding:12px 12px 14px; border-top:1px solid var(--border); background:#fff; }
+  .composer-inner{ display:flex; gap:10px; align-items:flex-end; border:1px solid var(--border); border-radius:14px; padding:10px; }
+  textarea{ flex:1; border:none; outline:none; resize:none; background:transparent; color:var(--text); font-size:14px; line-height:1.5; padding:6px; max-height:160px; }
+  textarea::placeholder{ color:#9ca3af; }
+  .send-btn{ border:none; border-radius:12px; padding:10px 14px; background:#2563eb; color:#fff; font-weight:900; cursor:pointer; box-shadow:0 8px 18px rgba(37,99,235,.18); min-width:84px;}
+  .send-btn:hover{ background:#1d4ed8; }
+  .send-btn.disabled{ opacity:.6; cursor:not-allowed; }
+  .hint{ margin-top:8px; color:var(--muted); font-size:12px; padding-left:2px; }
+  pre.code{ margin:10px 0 0; padding:10px 12px; border-radius:12px; background:#111827; border:1px solid #0b1220; overflow:auto;}
+  pre.code code{ color:#e5e7eb; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px;}
+  .rich-block{ margin-top:10px; }
+  .ai-table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .ai-table th, .ai-table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:13px; }
+  .ai-table thead th{ background:#f8fafc; color:#334155; font-weight:900; }
+  .ai-chart{ width:100%; height:360px; background:#fff; border:1px solid var(--border); border-radius:12px; }
+</style>
+{% endblock %}

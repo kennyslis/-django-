@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lr-wrap">
+  <div class="lr-header">
+    <div class="lr-title">
+      <div class="lr-badge">📊</div>
+      <div>
+        <h2>学情分析 <span class="lr-sub">（全作业）</span></h2>
+        <div class="lr-meta">生成时间：{{ summary.generated_at }}</div>
+      </div>
+    </div>
+
+    <a class="lr-btn" href="{% url 'learning_report_pdf' %}">
+      <span class="lr-btn-icon">📄</span>
+      点击生成学情报告（PDF）
+    </a>
+  </div>
+
+  <div class="lr-kpis">
+    <div class="lr-kpi">
+      <div class="lr-kpi-label">学生数</div>
+      <div class="lr-kpi-value" id="kpiStudents">{{ summary.total_students }}</div>
+    </div>
+    <div class="lr-kpi">
+      <div class="lr-kpi-label">作业数</div>
+      <div class="lr-kpi-value" id="kpiAssignments">{{ summary.total_assignments }}</div>
+    </div>
+    <div class="lr-kpi">
+      <div class="lr-kpi-label">总体提交率</div>
+      <div class="lr-kpi-value" id="kpiSubmitRate">{{ summary.overall_submit_rate|floatformat:2 }}</div>
+      <div class="lr-kpi-hint">（0~1，小数）</div>
+    </div>
+    <div class="lr-kpi">
+      <div class="lr-kpi-label">平均分</div>
+      <div class="lr-kpi-value" id="kpiAvgScore">{{ summary.overall_avg_score|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  <div class="lr-grid">
+    <div class="lr-card">
+      <div class="lr-card-header">
+        <div>
+          <div class="lr-card-title">学生聚类（3类）</div>
+          <div class="lr-card-desc">散点图展示 3 类学生群体</div>
+        </div>
+  
+      </div>
+      <div class="lr-card-body">
+        <div id="chartCluster" class="lr-chart"></div>
+      </div>
+    </div>
+
+    <div class="lr-card">
+      <div class="lr-card-header">
+        <div>
+          <div class="lr-card-title">平均分分布</div>
+          <div class="lr-card-desc">分数段人数分布</div>
+        </div>
+    
+      </div>
+      <div class="lr-card-body">
+        <div id="chartScore" class="lr-chart"></div>
+      </div>
+    </div>
+
+    <div class="lr-card">
+      <div class="lr-card-header">
+        <div>
+          <div class="lr-card-title">提交率分布</div>
+          <div class="lr-card-desc">每个学生的提交率（%）分布</div>
+        </div>
+       
+      </div>
+      <div class="lr-card-body">
+        <div id="chartSubmit" class="lr-chart"></div>
+      </div>
+    </div>
+
+    <div class="lr-card lr-span-2">
+      <div class="lr-card-header">
+        <div>
+          <div class="lr-card-title">各类概览</div>
+          <div class="lr-card-desc">各类的人数、均值、提交行为等</div>
+        </div>
+        <div class="lr-note">后端聚类；前端渲染</div>
+      </div>
+      <div class="lr-card-body">
+        <div class="lr-table-wrap">
+          <table class="lr-table">
+            <thead>
+              <tr>
+                <th style="width:22%;">类别</th>
+                <th style="width:12%;">人数</th>
+                <th style="width:14%;">平均分</th>
+                <th style="width:14%;">提交率</th>
+                <th style="width:18%;">平均提前(h)</th>
+                <th style="width:20%;">波动(Std)</th>
+              </tr>
+            </thead>
+            <tbody id="clusterTableBody">
+              <tr><td colspan="6" class="lr-empty">加载中...</td></tr>
+            </tbody>
+          </table>
+          <div class="lr-footnote">注：如果服务器未安装 scikit-learn，会自动降级为规则分层（仍输出 3 类）。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ECharts CDN（不想用 CDN 也可以把 echarts.min.js 放到 static） -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+<script>
+(async function initLearningReport(){
+  const resp = await fetch("{% url 'learning_report_data' %}", {credentials: "same-origin"});
+  const data = await resp.json();
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  // KPI
+  document.getElementById("kpiStudents").innerText = data.summary.total_students;
+  document.getElementById("kpiAssignments").innerText = data.summary.total_assignments;
+  document.getElementById("kpiSubmitRate").innerText = (data.summary.overall_submit_rate).toFixed(2);
+  document.getElementById("kpiAvgScore").innerText = (data.summary.overall_avg_score).toFixed(2);
+
+  // 聚类散点图
+  const clusterChart = echarts.init(document.getElementById("chartCluster"));
+  clusterChart.setOption({
+    tooltip: { trigger: "item" },
+    legend: { top: 10 },
+    grid: { left: 50, right: 30, top: 60, bottom: 40 },
+    xAxis: { name: data.scatter.x_name, nameLocation: "middle", nameGap: 25 },
+    yAxis: { name: data.scatter.y_name, nameLocation: "middle", nameGap: 35 },
+    series: data.scatter.series
+  });
+
+  // 平均分分布柱状图
+  const scoreChart = echarts.init(document.getElementById("chartScore"));
+  scoreChart.setOption({
+    tooltip: { trigger: "axis" },
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    xAxis: { type: "category", data: data.histograms.score.labels },
+    yAxis: { type: "value" },
+    series: [{
+      type: "bar",
+      data: data.histograms.score.counts,
+      barMaxWidth: 40,
+    }]
+  });
+
+  // 提交率分布柱状图
+  const submitChart = echarts.init(document.getElementById("chartSubmit"));
+  submitChart.setOption({
+    tooltip: { trigger: "axis" },
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    xAxis: { type: "category", data: data.histograms.submit_rate.labels },
+    yAxis: { type: "value" },
+    series: [{
+      type: "bar",
+      data: data.histograms.submit_rate.counts,
+      barMaxWidth: 40,
+    }]
+  });
+
+  // 表格渲染
+  const tbody = document.getElementById("clusterTableBody");
+  tbody.innerHTML = "";
+  data.cluster_summary.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="lr-tag ${r.cluster_label.includes('A') ? 'lr-tag-a' : (r.cluster_label.includes('B') ? 'lr-tag-b' : 'lr-tag-c')}">${r.cluster_label}</span></td>
+      <td class="lr-num">${r.n}</td>
+      <td class="lr-num">${Number(r.avg_score).toFixed(1)}</td>
+      <td class="lr-num">${(Number(r.submit_rate) * 100).toFixed(1)}%</td>
+      <td class="lr-num">${Number(r.avg_early).toFixed(1)}</td>
+      <td class="lr-num">${Number(r.score_std).toFixed(1)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // resize
+  window.addEventListener("resize", () => {
+    clusterChart.resize();
+    scoreChart.resize();
+    submitChart.resize();
+  });
+})();
+</script>
+
+<style>
+  :root{
+    --lr-card:#fff;
+    --lr-text:#0f172a;
+    --lr-muted:#64748b;
+    --lr-border:#e5e7eb;
+    --lr-shadow: 0 10px 30px rgba(2,6,23,.08);
+    --lr-blue:#2563eb;
+    --lr-blue2:#1d4ed8;
+    --lr-green:#16a34a;
+    --lr-amber:#f59e0b;
+    --lr-red:#ef4444;
+    --lr-radius: 18px;
+  }
+  .lr-wrap{width:96%;max-width:1200px;margin:18px auto 30px;color:var(--lr-text);}
+  .lr-header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;background:var(--lr-card);border:1px solid var(--lr-border);border-radius:var(--lr-radius);box-shadow:var(--lr-shadow);}
+  .lr-title{display:flex;align-items:center;gap:12px;}
+  .lr-badge{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.18);font-size:20px;}
+  .lr-title h2{margin:0;font-size:20px;font-weight:900;}
+  .lr-sub{color:var(--lr-muted);font-weight:700;font-size:13px;}
+  .lr-meta{margin-top:4px;color:var(--lr-muted);font-size:12px;}
+  .lr-btn{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,var(--lr-blue),var(--lr-blue2));color:#fff;text-decoration:none;font-weight:800;box-shadow:0 10px 20px rgba(37,99,235,.22);transition:transform .15s ease, box-shadow .15s ease;white-space:nowrap;}
+  .lr-btn:hover{transform:translateY(-1px);box-shadow:0 14px 26px rgba(37,99,235,.28);}
+  .lr-kpis{margin-top:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .lr-kpi{background:var(--lr-card);border:1px solid var(--lr-border);border-radius:16px;padding:14px;box-shadow:var(--lr-shadow);}
+  .lr-kpi-label{font-size:12px;color:var(--lr-muted);font-weight:800;text-transform:uppercase;letter-spacing:.4px;}
+  .lr-kpi-value{margin-top:8px;font-size:26px;font-weight:900;}
+  .lr-kpi-hint{margin-top:4px;font-size:12px;color:var(--lr-muted);}
+  .lr-grid{margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  .lr-span-2{grid-column:span 2;}
+  .lr-card{background:var(--lr-card);border:1px solid var(--lr-border);border-radius:var(--lr-radius);box-shadow:var(--lr-shadow);overflow:hidden;}
+  .lr-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid var(--lr-border);background:linear-gradient(180deg, rgba(248,250,252,.9), rgba(255,255,255,1));}
+  .lr-card-title{font-size:16px;font-weight:900;}
+  .lr-card-desc{margin-top:4px;font-size:12px;color:var(--lr-muted);}
+  .lr-chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(37,99,235,.25);color:var(--lr-blue);background:rgba(37,99,235,.08);font-weight:800;font-size:12px;white-space:nowrap;}
+  .lr-note{color:var(--lr-muted);font-size:12px;white-space:nowrap;}
+  .lr-card-body{padding:14px;}
+  .lr-chart{width:100%;height:380px;background:#fafafa;border:1px solid #eee;border-radius:14px;}
+  .lr-table-wrap{padding:2px;}
+  .lr-table{width:100%;border-collapse:collapse;border-radius:14px;overflow:hidden;}
+  .lr-table thead th{text-align:left;font-size:12px;color:var(--lr-muted);font-weight:900;text-transform:uppercase;letter-spacing:.6px;background:#f6f7fb;padding:12px;border-bottom:1px solid var(--lr-border);}
+  .lr-table tbody td{padding:12px;border-bottom:1px solid #f1f5f9;}
+  .lr-table tbody tr:nth-child(even){background:#fbfcfe;}
+  .lr-table tbody tr:hover{background:#f1f5f9;transition:.15s;}
+  .lr-num{font-variant-numeric:tabular-nums;font-weight:800;}
+  .lr-empty{text-align:center;color:var(--lr-muted);padding:18px;}
+  .lr-footnote{margin-top:10px;color:var(--lr-muted);font-size:12px;}
+  .lr-tag{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;border:1px solid transparent;}
+  .lr-tag-a{background:rgba(22,163,74,.10);color:var(--lr-green);border-color:rgba(22,163,74,.22);}
+  .lr-tag-b{background:rgba(245,158,11,.12);color:#b45309;border-color:rgba(245,158,11,.24);}
+  .lr-tag-c{background:rgba(239,68,68,.10);color:var(--lr-red);border-color:rgba(239,68,68,.22);}
+
+  @media (max-width: 1000px){
+    .lr-kpis{grid-template-columns:repeat(2,1fr);}
+    .lr-grid{grid-template-columns:1fr;}
+    .lr-span-2{grid-column:span 1;}
+    .lr-header{flex-direction:column;align-items:flex-start;}
+    .lr-note{white-space:normal;}
+    .lr-btn{width:100%;justify-content:center;}
+  }
+</style>
+{% endblock %}

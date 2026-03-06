@@ -148,6 +148,8 @@
                 {% if user.is_teacher %}
                     <li><a href="{% url 'teacher_assignment_management' %}" class="active">作业管理</a></li>
                     <li><a href="{% url 'grade_port' %}">学生作业情况总览</a></li>
+                    <li><a href="{% url 'learning_report' %}">学情分析</a></li>
+                    <li><a href="{% url 'ai_assistant' %}">AI 小助手</a></li>
                     <li><a href="{% url 'import_students' %}">导入学生信息</a></li>
                     <li><a href="{% url 'change_pass_html' %}">修改学生密码</a></li>
                     <li><a href="{% url 'custom_login' %}">退出</a></li>
