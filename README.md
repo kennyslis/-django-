@@ -1,98 +1,183 @@
-由于你的项目已经从简单的 Django 管理系统升级为集成了 **Celery + Redis** 异步队列和 **Docker** 容器化的工业级架构，这份 README 将重点突出这些技术亮点。
+# IntelliJ IDEA 可直接导入运行的完整工程
 
-你可以根据以下模板进行填充，图片部分我已为你留出占位符。
+本仓库已整理为可直接在 IntelliJ IDEA 使用的全栈工程，包含：
 
----
-
-# 🎓 智能教务资源自动化采集与数据分析系统
-
-本系统是一套基于 **Django** 框架开发的教务管理平台，集成了 **Ollama (Qwen2-7B)** 大模型实现智能表单生成，并利用 **Celery + Redis** 异步架构处理高并发数据采集与邮件分发。
-
-## 🌟 核心功能
-
-* **智能数据采集 (Web Scraping)**：支持多源教育平台作业与附件的自动化抓取，具备动态 UA 切换与代理对抗能力。
-* **AI 驱动的表单生成**：集成 Ollama (Qwen2-7B)，通过自然语言需求自动生成结构化 JSON 动态表单。
-* **异步任务队列**：基于 Celery 实现邮件批量分发与长耗时 AI 推理，确保 Web 响应无阻塞。
-* **自动化文件理算**：独立自研路径重映射算法，将散乱附件按“作业名_姓名_学号”自动重组归档。
-* **多维学情看板**：利用 ECharts 动态展示成绩分布（箱线图）与提交率统计。
+- `backend/`：Maven + Spring Boot 3（Java 17）
+- `frontend/`：Vite 前端工程（Node.js 20）
+- `docker-compose.yml`：一键启动 mysql / backend / frontend / nginx
+- `.env.example`：Docker 环境变量模板
 
 ---
 
-## 📸 界面展示
+## 1. 工程目录结构
 
-### 1. 登录与注册界面
-
-> 支持教师与学生双角色登录，具备验证码找回密码功能。
-
-**![alt text](image.png)**
-
-### 2. 老师端：作业与资源管理
-
-> 涵盖作业布置、AI 智能表单配置及学生提交进度实时监控。
-
-**![alt text](image-1.png)**
-
-### 3. AI 智能识别配置
-
-> 通过对话框输入需求，AI 自动生成对应的表单字段结构。
-
-**![alt text](image-2.png)**
-**![alt text](image-3.png)**
-
-### 4. 数据分析可视化看板
-
-> 展示学生成绩的离散度分析、平均分及提交率正态分布。
-
-**![alt text](image-4.png)**
-> 可导出学生成绩，并且复制未提交学生名字姓名。
-
-**![alt text](image-5.png)**
-
-### 5. 批量导入学生信息
-> 支持多种上传excel导入学生信息的功能，有提供模板。
-**![alt text](image-6.png)**
-
-
-### 6. 学生端：作业提交与反馈
-
-> 支持多种附件上传，并提供在线预览 Jupyter Notebook (.ipynb) 的功能。
-
-**![alt text](image-7.png)**
-**![alt text](image-8.png)**
-
----
-
-## 🛠 技术栈
-
-* **后端**: Python 3.10, Django 4.2
-* **任务编排**: Celery 5.x, Redis 7.0
-* **智能引擎**: Ollama (Qwen2-7B)
-* **数据处理**: Pandas, NumPy, SymPy
-* **可视化**: ECharts, Matplotlib, Seaborn
-* **容器化**: Docker, Docker-Compose
-
----
-
-## 🚀 快速启动 (Docker 部署)
-
-1. **环境准备**：确保宿主机已安装 Docker 和 Docker Desktop。
-2. **构建镜像**：
-```bash
-docker-compose up --build
-
+```text
+project-root/
+  backend/
+  frontend/
+  docker-compose.yml
+  .env.example
+  README.md
 ```
 
+---
 
-3. **数据库初始化**：
+## 2. 后端（Spring Boot）说明
+
+### 2.1 关键点
+
+- Maven 工程：`backend/pom.xml`
+- Java 版本：17
+- Spring Boot 主类：`backend/src/main/java/com/example/project/Application.java`
+- 配置文件：
+  - `backend/src/main/resources/application.yml`
+  - `backend/src/main/resources/application-dev.yml`
+- 健康接口：`GET /health`
+- 全局异常处理：`GlobalExceptionHandler`
+- 数据库迁移：Flyway（`backend/src/main/resources/db/migration`）
+
+### 2.2 IntelliJ IDEA 打开 backend
+
+1. 打开 IntelliJ IDEA。
+2. 选择 **Open**，定位到仓库中的 `backend` 目录并打开。
+3. IDEA 会自动识别 Maven 项目；若未自动加载，打开 Maven 工具窗口点击 **Reload All Maven Projects**。
+4. 在 **Project Structure > Project SDK** 设置为 **JDK 17**。
+5. 在 `Application.java` 上点击绿色运行按钮启动。
+
+### 2.3 本地运行 backend（命令行）
+
 ```bash
-docker-compose exec web python manage.py migrate
-
+cd backend
+mvn clean install
+mvn spring-boot:run
 ```
 
+默认端口为 `8080`，访问：
 
-
+- `http://localhost:8080/health`
 
 ---
 
+## 3. 前端（Vite）说明
 
+### 3.1 关键点
 
+- 包管理文件：`frontend/package.json`
+- Vite 配置：`frontend/vite.config.js`
+- Axios 基础地址：`frontend/src/api/http.js`
+  - 默认 `baseURL=/api`
+- 开发代理：Vite 将 `/api` 代理到后端（默认 `http://localhost:8080`）
+
+### 3.2 IntelliJ IDEA 打开 frontend
+
+1. 在 IDEA 中选择 **Open**，打开 `frontend` 目录（或在同一窗口以模块形式加载）。
+2. 打开 Terminal，执行：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+3. 启动后访问：`http://localhost:5173`
+
+---
+
+## 4. 数据库与环境初始化
+
+### 4.1 MySQL 初始化脚本
+
+- 脚本路径：`docker/mysql/init/001_init.sql`
+- 作用：初始化 `assignment_system` 数据库。
+
+### 4.2 Spring Boot 默认本地开发配置
+
+- 默认读取以下环境变量（可不设置，使用默认值）：
+  - `DB_HOST`（默认 `localhost`）
+  - `DB_PORT`（默认 `3306`）
+  - `DB_NAME`（默认 `assignment_system`）
+  - `DB_USERNAME`（默认 `root`）
+  - `DB_PASSWORD`（默认 `root`）
+
+### 4.3 Docker 环境变量示例
+
+1. 复制环境变量模板：
+
+```bash
+cp .env.example .env
+```
+
+2. 根据实际情况修改 `.env`。
+
+### 4.4 数据表或迁移配置
+
+- 使用 Flyway 自动迁移。
+- 首个迁移文件：`backend/src/main/resources/db/migration/V1__init_schema.sql`
+
+---
+
+## 5. Docker Compose 一键启动整套系统
+
+### 5.1 启动步骤
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+启动后服务：
+
+- mysql：`localhost:3306`
+- backend：`localhost:8080`
+- frontend：`localhost:5173`
+- nginx 统一入口：`localhost:80`
+
+Nginx 路由：
+
+- `/` -> frontend
+- `/api/*` -> backend
+
+### 5.2 健康检查
+
+```bash
+curl http://localhost/health
+```
+
+或
+
+```bash
+curl http://localhost:8080/health
+```
+
+---
+
+## 6. 推荐启动顺序（本地开发）
+
+1. 启动 MySQL（本机或 Docker）。
+2. 启动 backend（`mvn spring-boot:run`）。
+3. 启动 frontend（`npm run dev`）。
+4. 访问前端页面验证接口调用。
+
+---
+
+## 7. 验证步骤（验收清单）
+
+1. **后端可运行**
+   - `cd backend && mvn clean install` 成功。
+   - IDEA 中可直接运行 `Application.java`。
+   - `GET /health` 返回 `{"status":"UP"}`。
+
+2. **前端可运行**
+   - `cd frontend && npm install` 成功。
+   - `npm run dev` 成功并可访问页面。
+
+3. **Docker 全链路可运行**
+   - `docker compose up --build` 可拉起 mysql/backend/frontend/nginx。
+   - `http://localhost` 可访问前端。
+   - `http://localhost/health` 可访问后端健康检查。
+
+---
+
+## 8. 说明
+
+本次仅做工程化整理和可运行性修复，不新增业务功能。
